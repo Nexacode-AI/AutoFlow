@@ -1,0 +1,1 @@
+"""Admin domain entity definitions."""
