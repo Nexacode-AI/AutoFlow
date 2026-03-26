@@ -1,1 +1,50 @@
 """Async SQLAlchemy session factory and engine configuration."""
+import logging
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    async_sessionmaker,
+    AsyncSession
+)
+from typing import AsyncGenerator
+from .config import database_settings
+from .base import Base
+
+logger = logging.getLogger(__name__)
+
+logger.info(f"Connecting to database: {database_settings.POSTGRES_DATABASE_URL}")
+
+engine = create_async_engine(
+    database_settings.POSTGRES_DATABASE_URL,
+    echo=False,  # Set to True only for debugging SQL queries
+    future=True
+)
+
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    expire_on_commit=False,
+    class_=AsyncSession
+)
+
+async def init_db():
+    try:
+        logger.info("▶ Starting database initialization...")
+        logger.info("▶ Creating tables from metadata...")
+        async with engine.begin() as conn:
+            logger.info("▶ Running metadata.create_all()...")
+            await conn.run_sync(Base.metadata.create_all)
+            logger.info("✓ Database tables created successfully!")
+    except Exception as e:
+        logger.error(f"✗ Error initializing database: {e}", exc_info=True)
+        raise
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception as e:
+            await session.rollback()
+            logger.error(f"✗ Database session error: {e}", exc_info=True)
+            raise
+        finally:
+            await session.close()
