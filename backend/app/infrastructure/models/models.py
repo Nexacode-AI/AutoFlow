@@ -238,7 +238,7 @@ class Workflow(Base):
         cascade="all, delete-orphan",
     )
     current_step: Mapped[Optional["WorkflowStep"]] = relationship(
-        "WorkflowStep", foreign_keys=[current_step_id]
+        "WorkflowStep", foreign_keys=[current_step_id], post_update=True
     )
     inspection_sheet: Mapped[Optional["InspectionSheet"]] = relationship(
         "InspectionSheet", back_populates="workflow", uselist=False
@@ -291,7 +291,7 @@ class WorkflowStep(Base):
     )
     workflow_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
-        ForeignKey("workflows.workflow_id", use_alter=True),
+        ForeignKey("workflows.workflow_id", use_alter=True, name="fk_ws_workflow_id"),
     )
     step_def_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
