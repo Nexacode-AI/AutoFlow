@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useNavigate } from 'react-router';
 import { DETAILED_WORKFLOW_STEPS } from '../types';
 import {
@@ -378,6 +378,39 @@ Autoflow Service Centre`;
     const [orderSupplier,    setOrderSupplier]    = useState('');
     const [orderMsg,         setOrderMsg]         = useState('');
     const [orderMsgCopied,   setOrderMsgCopied]   = useState(false);
+
+    // ─── Step 12 (NEW): Multi-Supplier Pricing Tool ──────────────────────────
+    type SupplierDef = { id: string; name: string; color: string };
+    const [spo12Suppliers, setSpo12Suppliers] = useState<SupplierDef[]>([
+        { id: 'suan-huat',      name: 'Suan Huat',      color: '#3b82f6' },
+        { id: 'stuttgart',      name: 'Stuttgart',      color: '#16a34a' },
+        { id: 'bavaria',        name: 'Bavaria',        color: '#9333ea' },
+        { id: 'ramon',          name: 'Ramon',          color: '#c2410c' },
+        { id: 'ba-auto',        name: 'BA Auto',        color: '#db2777' },
+        { id: 'other-supplier', name: 'Other Supplier', color: '#374151' },
+    ]);
+    const [spo12SelectedIds, setSpo12SelectedIds] = useState<string[]>(['suan-huat', 'stuttgart', 'bavaria']);
+    const [spo12Markup, setSpo12Markup]           = useState<40 | 55 | 70>(55);
+    const [spo12Tab, setSpo12Tab]                 = useState<'parts' | 'summary' | 'whatsapp'>('parts');
+    const [spo12Costs, setSpo12Costs]             = useState<Record<string, string>>({
+        'crank-sensor_ORI_suan-huat': '380', 'crank-sensor_ORI_stuttgart': '400', 'crank-sensor_ORI_bavaria': '420',
+        'crank-sensor_OEM_suan-huat': '130', 'crank-sensor_OEM_stuttgart': '150', 'crank-sensor_OEM_bavaria': '160',
+        'crank-sensor_LABOUR_suan-huat': '100', 'crank-sensor_LABOUR_stuttgart': '120', 'crank-sensor_LABOUR_bavaria': '110',
+        'ignition-coil_ORI_suan-huat': '180', 'ignition-coil_ORI_stuttgart': '170', 'ignition-coil_ORI_bavaria': '195',
+        'ignition-coil_OEM_suan-huat': '70',  'ignition-coil_OEM_stuttgart': '80',  'ignition-coil_OEM_bavaria': '75',
+        'ignition-coil_USED_suan-huat': '40',
+        'ignition-coil_LABOUR_suan-huat': '80', 'ignition-coil_LABOUR_stuttgart': '90', 'ignition-coil_LABOUR_bavaria': '85',
+        'agm-battery_ORI_suan-huat': '1250', 'agm-battery_ORI_stuttgart': '1300', 'agm-battery_ORI_bavaria': '1280',
+        'agm-battery_LABOUR_suan-huat': '50',  'agm-battery_LABOUR_stuttgart': '60',  'agm-battery_LABOUR_bavaria': '55',
+    });
+    const [spo12Charge, setSpo12Charge] = useState<Record<string, string>>({
+        'crank-sensor_ORI': 'suan-huat',   'crank-sensor_LABOUR': 'suan-huat',
+        'ignition-coil_ORI': 'stuttgart',  'ignition-coil_LABOUR': 'suan-huat',
+        'agm-battery_ORI': 'suan-huat',    'agm-battery_LABOUR': 'suan-huat',
+    });
+    const [spo12Ordered, setSpo12Ordered] = useState<Record<string, boolean>>({ 'ignition-coil': true });
+    const [spo12AddName, setSpo12AddName] = useState('');
+    const [spo12ShowAdd, setSpo12ShowAdd] = useState(false);
 
     const generateOrderMsg = (supplier: string) => {
         if (!supplier || quoteParts.length === 0) return;
@@ -1997,132 +2030,469 @@ If you have any questions, please contact us at +60 12-345 6789.`}</pre>
                     </div>
                 );
 
-            case 12: // Spare Part Order
+            case 12: { // Spare Part Order — Multi-Supplier Pricing Tool
+                const SPO12_PARTS = [
+                    { id: 'crank-sensor',  name: 'Crank Sensor',     types: ['ORI', 'OEM', 'USED', 'LABOUR'] as const },
+                    { id: 'ignition-coil', name: 'Ignition Coil',    types: ['ORI', 'OEM', 'USED', 'LABOUR'] as const },
+                    { id: 'agm-battery',   name: 'AGM Battery 92AH', types: ['ORI', 'OEM', 'USED', 'LABOUR'] as const },
+                ];
+                const calcMU = (cost: number, pct: number) => Math.round(cost * (1 + pct / 100));
+                const getCost = (partId: string, type: string, suppId: string): number => {
+                    const v = spo12Costs[`${partId}_${type}_${suppId}`];
+                    return v ? (parseFloat(v) || 0) : 0;
+                };
+                const TYPE_COLOR: Record<string, string> = {
+                    ORI: 'text-emerald-600', OEM: 'text-amber-600', USED: 'text-orange-500', LABOUR: 'text-purple-600',
+                };
+                const selectedSuppliers = spo12Suppliers.filter(s => spo12SelectedIds.includes(s.id));
+                const addNewSupplier = () => {
+                    if (!spo12AddName.trim()) return;
+                    const id = spo12AddName.trim().toLowerCase().replace(/\s+/g, '-');
+                    const palette = ['#f59e0b', '#06b6d4', '#84cc16', '#f43f5e', '#8b5cf6'];
+                    const color = palette[spo12Suppliers.length % palette.length];
+                    setSpo12Suppliers(prev => [...prev, { id, name: spo12AddName.trim(), color }]);
+                    setSpo12SelectedIds(prev => [...prev, id]);
+                    setSpo12AddName('');
+                    setSpo12ShowAdd(false);
+                };
+
                 return (
-                    <div className="space-y-4">
-                        <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
-                            <p className="text-sm text-blue-800">
-                                <strong>User Action:</strong> Select a supplier, generate the order message from the finalised quotation, then send it via WhatsApp or copy it.
-                            </p>
-                        </div>
+                    <div className="space-y-5">
 
-                        {/* ── Quotation summary from Step 11 ── */}
-                        {quoteParts.length === 0 ? (
-                            <div className="border border-amber-200 bg-amber-50 rounded-lg px-4 py-3 flex items-center gap-2 text-sm text-amber-800">
-                                <AlertTriangle className="w-4 h-4 shrink-0" />
-                                No quotation parts found. Please complete Step 11 (Quotation) first.
+                        {/* ① SELECT SUPPLIERS FOR THIS JOB */}
+                        <div className="border border-gray-200 rounded-xl p-4 bg-white shadow-sm">
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className="w-5 h-5 rounded-full bg-gray-800 text-white text-xs flex items-center justify-center font-bold shrink-0">1</span>
+                                <span className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Select Suppliers for This Job</span>
+                                <span className="text-xs text-gray-400 ml-1">Tick suppliers to show their pricing columns</span>
                             </div>
-                        ) : (
-                            <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center gap-2">
-                                    <Package className="w-4 h-4 text-indigo-600" />
-                                    <span className="text-sm font-semibold text-gray-700">Finalised Quotation</span>
-                                    <span className="ml-auto text-xs text-gray-400">{quoteParts.length} parts</span>
-                                </div>
-                                <div className="divide-y divide-gray-100">
-                                    {quoteParts.map(p => (
-                                        <div key={p.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                                            <div>
-                                                <span className="font-medium text-gray-800">{p.name}</span>
-                                                <span className="ml-2 text-xs text-gray-400">× {p.qty}</span>
-                                            </div>
-                                            <span className="font-semibold text-gray-700">RM {(p.price * p.qty).toFixed(2)}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="bg-gray-50 px-4 py-2.5 border-t border-gray-200 flex justify-between items-center">
-                                    <span className="text-sm font-semibold text-gray-700">Total</span>
-                                    <span className="font-bold text-indigo-700">RM {quoteTotal.toFixed(2)}</span>
-                                </div>
-                            </div>
-                        )}
 
-                        {/* ── Supplier selector ── */}
-                        <div className="border border-gray-200 rounded-lg overflow-hidden">
-                            <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center gap-2">
-                                <Send className="w-4 h-4 text-indigo-600" />
-                                <span className="text-sm font-semibold text-gray-700">Select Supplier</span>
-                            </div>
-                            <div className="px-4 py-4 space-y-3">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-600 mb-1">Supplier *</label>
-                                    <select
-                                        value={orderSupplier}
-                                        onChange={e => {
-                                            setOrderSupplier(e.target.value);
-                                            setOrderMsg('');
-                                        }}
-                                        className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                    >
-                                        <option value="">— Select supplier —</option>
-                                        {SUPPLIERS.map(s => (
-                                            <option key={s} value={s}>{s}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => generateOrderMsg(orderSupplier)}
-                                        disabled={!orderSupplier || quoteParts.length === 0}
-                                        className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-                                    >
-                                        <FileText className="w-4 h-4" /> Generate Order Message
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* ── Generated order message ── */}
-                        {orderMsg && (
-                            <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <MessageSquare className="w-4 h-4 text-indigo-600" />
-                                        <span className="text-sm font-semibold text-gray-700">Order Message</span>
-                                        <span className="text-xs text-gray-400">· Editable before sending</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {spo12Suppliers.map(sup => {
+                                    const isSel = spo12SelectedIds.includes(sup.id);
+                                    return (
                                         <button
-                                            onClick={copyOrderMsg}
-                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                                                orderMsgCopied
-                                                    ? 'bg-green-50 border-green-400 text-green-700'
-                                                    : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                                            key={sup.id}
+                                            onClick={() => setSpo12SelectedIds(prev =>
+                                                prev.includes(sup.id) ? prev.filter(x => x !== sup.id) : [...prev, sup.id]
+                                            )}
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2 ${
+                                                isSel ? 'bg-white shadow-sm text-gray-800' : 'bg-white text-gray-400 border-gray-200'
                                             }`}
+                                            style={isSel ? { borderColor: sup.color } : {}}
                                         >
-                                            {orderMsgCopied
-                                                ? <><CheckCheck className="w-3.5 h-3.5" /> Copied</>
-                                                : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+                                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: isSel ? sup.color : '#d1d5db' }} />
+                                            {sup.name}
                                         </button>
-                                        <button
-                                            onClick={() => window.open(`https://api.whatsapp.com/send/?text=${encodeURIComponent(orderMsg)}&type=custom_url&app_absent=0`, '_blank')}
-                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-600 text-white hover:bg-green-700 transition-colors"
-                                        >
-                                            <Share2 className="w-3.5 h-3.5" /> Send via WhatsApp
-                                        </button>
-                                    </div>
-                                </div>
-                                <textarea
-                                    value={orderMsg}
-                                    onChange={e => setOrderMsg(e.target.value)}
-                                    rows={18}
-                                    className="w-full p-4 font-mono text-sm text-gray-700 bg-white border-0 focus:outline-none focus:ring-0 resize-y leading-relaxed"
-                                    spellCheck={false}
-                                />
-                            </div>
-                        )}
+                                    );
+                                })}
 
-                        {/* ── Complete step ── */}
-                        {orderMsg && (
-                            <button
-                                onClick={() => completeStep(12)}
-                                className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2"
-                            >
-                                <Check className="w-4 h-4" /> Mark as Ordered &amp; Complete
-                            </button>
-                        )}
+                                {spo12ShowAdd ? (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="text"
+                                            value={spo12AddName}
+                                            onChange={e => setSpo12AddName(e.target.value)}
+                                            placeholder="Supplier name"
+                                            autoFocus
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') addNewSupplier();
+                                                if (e.key === 'Escape') { setSpo12ShowAdd(false); setSpo12AddName(''); }
+                                            }}
+                                            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                        />
+                                        <button onClick={addNewSupplier} className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700">Add</button>
+                                        <button onClick={() => { setSpo12ShowAdd(false); setSpo12AddName(''); }} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => setSpo12ShowAdd(true)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-gray-500 border-2 border-dashed border-gray-300 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" /> Add New Supplier
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                                <span className="text-base">💡</span>
+                                <p className="text-xs text-blue-800">
+                                    <span className="font-semibold">{selectedSuppliers.length} supplier(s) selected.</span> Unticked suppliers are hidden from the table.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* ② MARKUP % (PARTS ONLY — LABOUR EXCLUDED) */}
+                        <div className="border border-gray-200 rounded-xl p-4 bg-white shadow-sm">
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className="w-5 h-5 rounded-full bg-gray-800 text-white text-xs flex items-center justify-center font-bold shrink-0">2</span>
+                                <span className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Markup % (Parts Only — Labour Excluded)</span>
+                            </div>
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <span className="text-xs text-gray-500">Active Markup:</span>
+                                {([40, 55, 70] as const).map(pct => (
+                                    <button
+                                        key={pct}
+                                        onClick={() => setSpo12Markup(pct)}
+                                        className={`px-4 py-1.5 rounded-lg text-sm font-semibold border transition-all ${
+                                            spo12Markup === pct
+                                                ? 'bg-gray-900 text-white border-gray-900 shadow-sm'
+                                                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {pct}%
+                                    </button>
+                                ))}
+                                <span className="text-xs text-gray-400 ml-1">All 3 columns always visible. <span className="text-blue-600 font-medium">Bold blue</span> = active markup.</span>
+                            </div>
+                        </div>
+
+                        {/* TABS + TABLE */}
+                        <div className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden">
+                            {/* Tab bar */}
+                            <div className="flex border-b border-gray-200 px-4 pt-3 gap-1 bg-gray-50">
+                                {([
+                                    { id: 'parts'    as const, label: '⊞  Parts Table' },
+                                    { id: 'summary'  as const, label: '📊  Summary' },
+                                    { id: 'whatsapp' as const, label: '💬  WhatsApp Orders' },
+                                ]).map(tab => (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setSpo12Tab(tab.id)}
+                                        className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors -mb-px ${
+                                            spo12Tab === tab.id
+                                                ? 'border-indigo-600 text-indigo-600 bg-white'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-white'
+                                        }`}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="p-4">
+                                {/* ── PARTS TABLE TAB ── */}
+                                {spo12Tab === 'parts' && (
+                                    <div>
+                                        <div className="overflow-x-auto rounded-lg border border-gray-200">
+                                            <table
+                                                className="text-xs border-collapse"
+                                                style={{ minWidth: `${200 + selectedSuppliers.length * 230 + 180 + 90}px` }}
+                                            >
+                                                <thead>
+                                                    {/* Row 1 — Supplier group headers */}
+                                                    <tr>
+                                                        <th
+                                                            className="bg-gray-900 text-white px-3 py-3 text-left font-semibold border-r border-gray-700"
+                                                            style={{ minWidth: 140, position: 'sticky', left: 0, zIndex: 20 }}
+                                                        >PART</th>
+                                                        <th className="bg-gray-900 text-white px-3 py-3 text-left font-semibold border-r border-gray-700" style={{ minWidth: 64 }}>TYPE</th>
+                                                        {selectedSuppliers.map(sup => (
+                                                            <th
+                                                                key={sup.id}
+                                                                colSpan={4}
+                                                                className="text-white text-center py-2.5 px-2 font-semibold border-r border-white/20 tracking-wide"
+                                                                style={{ background: sup.color }}
+                                                            >
+                                                                {sup.name}
+                                                            </th>
+                                                        ))}
+                                                        <th
+                                                            className="text-white text-center py-2.5 px-2 font-semibold border-r border-white/20 uppercase tracking-wide leading-tight"
+                                                            style={{ background: '#b45309', minWidth: 160 }}
+                                                        >
+                                                            Customer<br />Charge
+                                                        </th>
+                                                        <th className="bg-gray-900 text-white px-3 py-3 text-center font-semibold" style={{ minWidth: 80 }}>ORDERED</th>
+                                                    </tr>
+                                                    {/* Row 2 — Sub-column labels */}
+                                                    <tr>
+                                                        <th className="bg-gray-800 border-r border-gray-600 px-3 py-2" style={{ position: 'sticky', left: 0, zIndex: 20 }}></th>
+                                                        <th className="bg-gray-800 border-r border-gray-600 px-3 py-2"></th>
+                                                        {selectedSuppliers.map(sup => (
+                                                            <Fragment key={sup.id}>
+                                                                <th className="bg-gray-50 border border-gray-200 px-2 py-2 text-gray-600 font-semibold text-center whitespace-nowrap" style={{ minWidth: 68 }}>Cost (RM)</th>
+                                                                {([40, 55, 70] as const).map(pct => (
+                                                                    <th
+                                                                        key={pct}
+                                                                        className={`border border-gray-200 px-2 py-2 text-center font-semibold bg-gray-50 ${spo12Markup === pct ? 'text-blue-600' : 'text-gray-500'}`}
+                                                                        style={{ minWidth: 46 }}
+                                                                    >
+                                                                        {pct}%
+                                                                    </th>
+                                                                ))}
+                                                            </Fragment>
+                                                        ))}
+                                                        <th className="bg-amber-50 border border-amber-100 px-2 py-2"></th>
+                                                        <th className="bg-gray-50 border border-gray-200 px-2 py-2"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {SPO12_PARTS.map(part => {
+                                                        const TYPES = ['ORI', 'OEM', 'USED', 'LABOUR'] as const;
+                                                        return TYPES.map((type, typeIdx) => {
+                                                            const isFirst   = typeIdx === 0;
+                                                            const isLabour  = type === 'LABOUR';
+                                                            const rowKey    = `${part.id}_${type}`;
+                                                            const validCosts = selectedSuppliers.map(s => getCost(part.id, type, s.id)).filter(c => c > 0);
+                                                            const minCost   = validCosts.length ? Math.min(...validCosts) : null;
+
+                                                            return (
+                                                                <tr key={rowKey} className={isFirst ? 'border-t-2 border-t-gray-300' : 'border-t border-t-gray-100'}>
+
+                                                                    {/* Part name — rowSpan 4 */}
+                                                                    {isFirst && (
+                                                                        <td
+                                                                            rowSpan={4}
+                                                                            className="px-3 py-2 font-semibold text-gray-800 bg-white border-r border-gray-200 align-top pt-3"
+                                                                            style={{ position: 'sticky', left: 0, zIndex: 10 }}
+                                                                        >
+                                                                            {part.name}
+                                                                        </td>
+                                                                    )}
+
+                                                                    {/* Type label */}
+                                                                    <td className={`px-3 py-2 font-semibold bg-white border-r border-gray-100 ${TYPE_COLOR[type]}`}>
+                                                                        {type}
+                                                                    </td>
+
+                                                                    {/* Per-supplier columns */}
+                                                                    {selectedSuppliers.map(sup => {
+                                                                        const costKey = `${part.id}_${type}_${sup.id}`;
+                                                                        const costVal = spo12Costs[costKey] || '';
+                                                                        const costNum = parseFloat(costVal) || 0;
+                                                                        const isCheapest = costNum > 0 && costNum === minCost;
+
+                                                                        return (
+                                                                            <Fragment key={sup.id}>
+                                                                                {/* Cost input */}
+                                                                                <td className="px-1 py-1 bg-white border-l border-gray-100">
+                                                                                    <div className="relative inline-block">
+                                                                                        {isCheapest && (
+                                                                                            <span className="absolute -top-1 right-0 text-amber-400 text-xs leading-none pointer-events-none">★</span>
+                                                                                        )}
+                                                                                        <input
+                                                                                            type="number"
+                                                                                            value={costVal}
+                                                                                            onChange={e => setSpo12Costs(prev => ({ ...prev, [costKey]: e.target.value }))}
+                                                                                            placeholder="—"
+                                                                                            className={`w-16 px-1.5 py-1 text-xs text-center rounded border focus:ring-1 focus:ring-indigo-400 focus:outline-none ${
+                                                                                                costVal ? 'bg-amber-50 border-amber-200 font-medium' : 'bg-gray-50 border-gray-200 text-gray-300'
+                                                                                            }`}
+                                                                                        />
+                                                                                    </div>
+                                                                                </td>
+
+                                                                                {/* 40% / 55% / 70% markup columns */}
+                                                                                {isLabour ? (
+                                                                                    <td colSpan={3} className="px-2 py-1 text-center text-gray-400 italic bg-gray-50 text-xs border-l border-gray-100">
+                                                                                        No markup
+                                                                                    </td>
+                                                                                ) : (
+                                                                                    ([40, 55, 70] as const).map(pct => (
+                                                                                        <td
+                                                                                            key={pct}
+                                                                                            className={`px-2 py-1 text-center text-xs border-l border-gray-100 ${
+                                                                                                !costNum ? 'text-gray-300' : spo12Markup === pct ? 'text-blue-600 font-bold' : 'text-gray-600'
+                                                                                            }`}
+                                                                                        >
+                                                                                            {costNum > 0 ? calcMU(costNum, pct) : '—'}
+                                                                                        </td>
+                                                                                    ))
+                                                                                )}
+                                                                            </Fragment>
+                                                                        );
+                                                                    })}
+
+                                                                    {/* Customer Charge dropdown */}
+                                                                    <td className="px-2 py-1 bg-amber-50 border-l border-amber-200">
+                                                                        <select
+                                                                            value={spo12Charge[rowKey] || ''}
+                                                                            onChange={e => setSpo12Charge(prev => ({ ...prev, [rowKey]: e.target.value }))}
+                                                                            className="w-full text-xs border border-gray-200 rounded px-1 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                                                            style={{ minWidth: 130 }}
+                                                                        >
+                                                                            <option value="">— Select —</option>
+                                                                            {selectedSuppliers.map(sup => {
+                                                                                const c = getCost(part.id, type, sup.id);
+                                                                                if (!c) return null;
+                                                                                const price = isLabour ? c : calcMU(c, spo12Markup);
+                                                                                return (
+                                                                                    <option key={sup.id} value={sup.id}>
+                                                                                        {sup.name} · RM{price}
+                                                                                    </option>
+                                                                                );
+                                                                            })}
+                                                                        </select>
+                                                                    </td>
+
+                                                                    {/* Ordered checkbox — rowSpan 4, first row only */}
+                                                                    {isFirst && (
+                                                                        <td rowSpan={4} className="px-2 py-1 text-center bg-white border-l border-gray-200 align-middle">
+                                                                            {spo12Ordered[part.id] ? (
+                                                                                <div className="flex flex-col items-center gap-1">
+                                                                                    <div className="w-6 h-6 rounded bg-green-500 flex items-center justify-center">
+                                                                                        <Check className="w-4 h-4 text-white" />
+                                                                                    </div>
+                                                                                    <span className="text-xs text-green-600 font-medium">Done ✓</span>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div className="flex flex-col items-center gap-1">
+                                                                                    <input
+                                                                                        type="checkbox"
+                                                                                        checked={false}
+                                                                                        onChange={e => setSpo12Ordered(prev => ({ ...prev, [part.id]: e.target.checked }))}
+                                                                                        className="w-4 h-4 accent-indigo-600 cursor-pointer"
+                                                                                    />
+                                                                                    <span className="text-[10px] text-gray-400 leading-tight text-center">Auto on<br />Step 14</span>
+                                                                                </div>
+                                                                            )}
+                                                                        </td>
+                                                                    )}
+                                                                </tr>
+                                                            );
+                                                        });
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        {/* Add Part from Database */}
+                                        <div className="mt-3">
+                                            <button className="flex items-center gap-2 text-xs text-gray-500 border border-dashed border-gray-300 rounded-lg px-3 py-2 hover:border-indigo-400 hover:text-indigo-600 transition-colors">
+                                                <Plus className="w-3.5 h-3.5" /> Add Part from Database
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ── SUMMARY TAB ── */}
+                                {spo12Tab === 'summary' && (
+                                    <div className="space-y-3">
+                                        <p className="text-xs text-gray-500">
+                                            Summary of selected customer charges at <span className="font-semibold text-indigo-600">{spo12Markup}%</span> active markup
+                                        </p>
+                                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                            <table className="w-full text-xs">
+                                                <thead>
+                                                    <tr className="bg-gray-50 border-b border-gray-200">
+                                                        <th className="px-3 py-2 text-left font-semibold text-gray-700">Part</th>
+                                                        <th className="px-3 py-2 text-left font-semibold text-gray-700">Type</th>
+                                                        <th className="px-3 py-2 text-left font-semibold text-gray-700">Supplier</th>
+                                                        <th className="px-3 py-2 text-right font-semibold text-gray-700">Cost (RM)</th>
+                                                        <th className="px-3 py-2 text-right font-semibold text-gray-700">Charge (RM)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100">
+                                                    {SPO12_PARTS.flatMap(part =>
+                                                        (['ORI', 'OEM', 'USED', 'LABOUR'] as const).map(type => {
+                                                            const rk = `${part.id}_${type}`;
+                                                            const cId = spo12Charge[rk];
+                                                            if (!cId) return null;
+                                                            const cost = getCost(part.id, type, cId);
+                                                            if (!cost) return null;
+                                                            const supName = spo12Suppliers.find(s => s.id === cId)?.name || '';
+                                                            const charge  = type === 'LABOUR' ? cost : calcMU(cost, spo12Markup);
+                                                            return (
+                                                                <tr key={rk} className="hover:bg-gray-50">
+                                                                    <td className="px-3 py-2 font-medium text-gray-800">{part.name}</td>
+                                                                    <td className={`px-3 py-2 font-semibold ${TYPE_COLOR[type]}`}>{type}</td>
+                                                                    <td className="px-3 py-2 text-gray-600">{supName}</td>
+                                                                    <td className="px-3 py-2 text-right text-gray-600">{cost}</td>
+                                                                    <td className="px-3 py-2 text-right font-semibold text-gray-800">{charge}</td>
+                                                                </tr>
+                                                            );
+                                                        }).filter(Boolean)
+                                                    )}
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr className="bg-indigo-50 border-t-2 border-indigo-200">
+                                                        <td colSpan={4} className="px-3 py-2 font-semibold text-indigo-800">Total Customer Charge</td>
+                                                        <td className="px-3 py-2 text-right font-bold text-indigo-800">
+                                                            RM {SPO12_PARTS.flatMap(part =>
+                                                                (['ORI', 'OEM', 'USED', 'LABOUR'] as const).map(type => {
+                                                                    const cId = spo12Charge[`${part.id}_${type}`];
+                                                                    if (!cId) return 0;
+                                                                    const c = getCost(part.id, type, cId);
+                                                                    return type === 'LABOUR' ? c : calcMU(c, spo12Markup);
+                                                                })
+                                                            ).reduce((a, b) => a + b, 0)}
+                                                        </td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ── WHATSAPP ORDERS TAB ── */}
+                                {spo12Tab === 'whatsapp' && (
+                                    <div className="space-y-4">
+                                        <p className="text-xs text-gray-500">Per-supplier WhatsApp order messages based on your Customer Charge selections</p>
+                                        {selectedSuppliers.map(sup => {
+                                            const supParts = SPO12_PARTS.flatMap(part =>
+                                                (['ORI', 'OEM', 'USED', 'LABOUR'] as const)
+                                                    .filter(type => spo12Charge[`${part.id}_${type}`] === sup.id && getCost(part.id, type, sup.id) > 0)
+                                                    .map(type => ({ partName: part.name, type, cost: getCost(part.id, type, sup.id) }))
+                                            );
+                                            if (supParts.length === 0) return (
+                                                <div key={sup.id} className="border border-gray-100 rounded-lg px-4 py-3 text-xs text-gray-400 flex items-center gap-2">
+                                                    <span className="w-3 h-3 rounded-full shrink-0" style={{ background: sup.color }} />
+                                                    <span className="font-medium" style={{ color: sup.color }}>{sup.name}</span>
+                                                    <span>— No parts selected from this supplier</span>
+                                                </div>
+                                            );
+                                            const msg = `Dear ${sup.name},\n\nOrder for Workflow: ${WORKFLOW_CODE}\nVehicle: ${PLATE_NUMBER} (Chassis: ${CHASSIS_NUMBER})\n\nParts Required:\n${supParts.map((p, i) => `${i + 1}. ${p.partName} (${p.type}) — Cost: RM${p.cost}`).join('\n')}\n\nKindly confirm availability and ETA.\n\nThank you,\nAutoflow Service Centre`;
+                                            return (
+                                                <div key={sup.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                                                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100" style={{ background: `${sup.color}18` }}>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-3 h-3 rounded-full shrink-0" style={{ background: sup.color }} />
+                                                            <span className="text-sm font-semibold" style={{ color: sup.color }}>{sup.name}</span>
+                                                            <span className="text-xs text-gray-400">· {supParts.length} item(s)</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={() => navigator.clipboard.writeText(msg)}
+                                                                className="flex items-center gap-1 text-xs border border-gray-300 bg-white rounded-lg px-2.5 py-1 hover:bg-gray-50"
+                                                            >
+                                                                <Copy className="w-3 h-3" /> Copy
+                                                            </button>
+                                                            <button
+                                                                onClick={() => window.open(`https://api.whatsapp.com/send/?text=${encodeURIComponent(msg)}&type=custom_url&app_absent=0`, '_blank')}
+                                                                className="flex items-center gap-1 text-xs bg-green-600 text-white rounded-lg px-2.5 py-1 hover:bg-green-700"
+                                                            >
+                                                                <Share2 className="w-3 h-3" /> WhatsApp
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <pre className="px-4 py-3 text-xs text-gray-700 whitespace-pre-wrap font-mono bg-white leading-relaxed">{msg}</pre>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Bottom action bar */}
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                            <p className="text-xs text-gray-400 italic">Auto-saves on every input change · Prices recalculate live</p>
+                            <div className="flex gap-3">
+                                <button className="px-5 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
+                                    Save Draft
+                                </button>
+                                <button
+                                    onClick={() => completeStep(12)}
+                                    className="bg-gray-900 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 flex items-center gap-2"
+                                >
+                                    Mark Step Complete →
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 );
+            }
 
             case 13: // Spare Parts in Workshop
                 return (
