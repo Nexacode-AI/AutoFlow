@@ -70,13 +70,7 @@ export default function WorkProgressPhotos({ workflowId, onComplete }: WorkProgr
   const isComplete = checkCompleteness();
 
   const handleComplete = () => {
-    if (!isComplete) {
-      if (confirm('Not all required photos have been uploaded. Proceed anyway?')) {
-        onComplete();
-      }
-    } else {
-      onComplete();
-    }
+    onComplete();
   };
 
   return (

@@ -408,9 +408,178 @@ Autoflow Service Centre`;
         'ignition-coil_ORI': 'stuttgart',  'ignition-coil_LABOUR': 'suan-huat',
         'agm-battery_ORI': 'suan-huat',    'agm-battery_LABOUR': 'suan-huat',
     });
+    const [spo12ChargeAmt, setSpo12ChargeAmt] = useState<Record<string, string>>({
+        'crank-sensor_ORI': '589',  'crank-sensor_LABOUR': '100',
+        'ignition-coil_ORI': '620', 'ignition-coil_LABOUR': '80',
+        'agm-battery_ORI': '1938',  'agm-battery_LABOUR': '50',
+    });
     const [spo12Ordered, setSpo12Ordered] = useState<Record<string, boolean>>({ 'ignition-coil': true });
     const [spo12AddName, setSpo12AddName] = useState('');
     const [spo12ShowAdd, setSpo12ShowAdd] = useState(false);
+
+    // ─── 2nd Quotation (Q2) ───────────────────────────────────────────────────
+    const Q2_WORKFLOW_CODE = `${WORKFLOW_CODE}-Q2`;
+    const [isQ2Active,       setIsQ2Active]       = useState(false);
+    const [q2ExpandedStep,   setQ2ExpandedStep]   = useState<number | null>(7);
+    const [q2StepCompletion, setQ2StepCompletion] = useState<Record<number, number>>({});
+
+    // Q2 Step 7 — Spare Parts Needed
+    const [q2PartsCategory,  setQ2PartsCategory]  = useState('');
+    const [q2SelectedParts,  setQ2SelectedParts]  = useState<Record<string, PartEntry>>({});
+    const [q2SupplierMsg,    setQ2SupplierMsg]    = useState('');
+    const [q2MsgCopied,      setQ2MsgCopied]      = useState(false);
+    const [q2PartsConfirmed, setQ2PartsConfirmed] = useState(false);
+
+    // Q2 Step 8 — Supplier Quotes
+    const [q2SupplierQuotes, setQ2SupplierQuotes] = useState<Record<string, SupplierQuote>>({});
+
+    // Q2 Step 9 — Markup
+    const [q2MarkupPrices,   setQ2MarkupPrices]   = useState<Record<string, string>>({});
+
+    // Q2 Step 10 — Customer Approval
+    const [q2CustomerMsg,        setQ2CustomerMsg]        = useState('');
+    const [q2CustomerMsgCopied,  setQ2CustomerMsgCopied]  = useState(false);
+    const [q2Approval,           setQ2Approval]           = useState<ApprovalChoice[] | null>(null);
+
+    // Q2 Step 11 — Quotation Builder
+    const [q2QuoteParts,    setQ2QuoteParts]    = useState<QuotePart[]>([]);
+    const [q2QuoteAddCat,   setQ2QuoteAddCat]   = useState('');
+    const [q2QuoteAddName,  setQ2QuoteAddName]  = useState('');
+    const [q2QuoteAddQty,   setQ2QuoteAddQty]   = useState('1');
+    const [q2QuoteAddPrice, setQ2QuoteAddPrice] = useState('');
+    const [q2ShowQuoteAdd,  setQ2ShowQuoteAdd]  = useState(false);
+
+    // Q2 Step 12 — Multi-Supplier Pricing
+    const [q2Spo12Suppliers,   setQ2Spo12Suppliers]   = useState<SupplierDef[]>([
+        { id: 'suan-huat',      name: 'Suan Huat',      color: '#3b82f6' },
+        { id: 'stuttgart',      name: 'Stuttgart',      color: '#16a34a' },
+        { id: 'bavaria',        name: 'Bavaria',        color: '#9333ea' },
+        { id: 'ramon',          name: 'Ramon',          color: '#c2410c' },
+        { id: 'ba-auto',        name: 'BA Auto',        color: '#db2777' },
+        { id: 'other-supplier', name: 'Other Supplier', color: '#374151' },
+    ]);
+    const [q2Spo12SelectedIds, setQ2Spo12SelectedIds] = useState<string[]>(['suan-huat', 'stuttgart', 'bavaria']);
+    const [q2Spo12Markup,      setQ2Spo12Markup]      = useState<40 | 55 | 70>(55);
+    const [q2Spo12Tab,         setQ2Spo12Tab]         = useState<'parts' | 'summary' | 'whatsapp'>('parts');
+    const [q2Spo12Costs,       setQ2Spo12Costs]       = useState<Record<string, string>>({});
+    const [q2Spo12Charge,      setQ2Spo12Charge]      = useState<Record<string, string>>({});
+    const [q2Spo12ChargeAmt,   setQ2Spo12ChargeAmt]   = useState<Record<string, string>>({});
+    const [q2Spo12Ordered,     setQ2Spo12Ordered]     = useState<Record<string, boolean>>({});
+    const [q2Spo12AddName,     setQ2Spo12AddName]     = useState('');
+    const [q2Spo12ShowAdd,     setQ2Spo12ShowAdd]     = useState(false);
+
+    // Q2 Step 13 — Spare Parts in Workshop
+    const [q2ReceivedParts, setQ2ReceivedParts] = useState<Record<string, ReceivedPart>>({});
+
+    // ─── Q2 Helper Functions ──────────────────────────────────────────────────
+    const completeQ2Step = (stepNumber: number) => {
+        setQ2StepCompletion(prev => ({ ...prev, [stepNumber]: Date.now() }));
+    };
+
+    const cancelQ2 = () => {
+        if (!confirm('Cancel 2nd quotation? All Q2 data will be lost.')) return;
+        setIsQ2Active(false);
+        setQ2ExpandedStep(7);
+        setQ2StepCompletion({});
+        setQ2PartsCategory('');
+        setQ2SelectedParts({});
+        setQ2SupplierMsg('');
+        setQ2PartsConfirmed(false);
+        setQ2SupplierQuotes({});
+        setQ2MarkupPrices({});
+        setQ2CustomerMsg('');
+        setQ2Approval(null);
+        setQ2QuoteParts([]);
+        setQ2ShowQuoteAdd(false);
+        setQ2Spo12Costs({});
+        setQ2Spo12Charge({});
+        setQ2Spo12ChargeAmt({});
+        setQ2Spo12Ordered({});
+        setQ2ReceivedParts({});
+    };
+
+    const toggleQ2Part = (part: { id: string; name: string; price: number }) => {
+        setQ2SelectedParts(prev => {
+            if (prev[part.id]) { const n = { ...prev }; delete n[part.id]; return n; }
+            return { ...prev, [part.id]: { ...part, qty: 1 } };
+        });
+        setQ2PartsConfirmed(false);
+        setQ2SupplierMsg('');
+    };
+
+    const updateQ2Qty = (partId: string, qty: number) => {
+        setQ2SelectedParts(prev => ({ ...prev, [partId]: { ...prev[partId], qty: Math.max(1, qty) } }));
+        setQ2PartsConfirmed(false);
+        setQ2SupplierMsg('');
+    };
+
+    const generateQ2SupplierMsg = () => {
+        const parts = Object.values(q2SelectedParts);
+        if (parts.length === 0) return;
+        const dateStr = new Date().toLocaleDateString('en-MY', { day: '2-digit', month: 'long', year: 'numeric' });
+        const partLines = parts.map((p, i) =>
+            `  ${String(i + 1).padStart(2, ' ')}. ${p.name}\n      Quantity   : ${p.qty} unit${p.qty > 1 ? 's' : ''}\n      Unit Price : RM ${p.price.toFixed(2)}`
+        ).join('\n\n');
+        const msg =
+`*SPARE PARTS ENQUIRY — 2nd Quotation*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Workshop      : Autoflow Service Centre
+Workflow Code : ${Q2_WORKFLOW_CODE}
+Vehicle Plate : ${PLATE_NUMBER}
+Chassis No.   : ${CHASSIS_NUMBER}
+Date          : ${dateStr}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADDITIONAL PARTS REQUIRED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${partLines}
+
+Kindly confirm availability, price, and delivery date.
+
+Thank you,
+Autoflow Service Centre
+Ref: ${Q2_WORKFLOW_CODE}`;
+        setQ2SupplierMsg(msg);
+        setQ2PartsConfirmed(true);
+    };
+
+    const getQ2Quote = (partId: string): SupplierQuote =>
+        q2SupplierQuotes[partId] ?? {
+            price: q2SelectedParts[partId] ? String(q2SelectedParts[partId].price) : '',
+            availability: 'In Stock'
+        };
+
+    const updateQ2Quote = (partId: string, field: keyof SupplierQuote, value: string) => {
+        setQ2SupplierQuotes(prev => ({
+            ...prev,
+            [partId]: { ...(prev[partId] ?? { price: '', availability: 'In Stock' }), [field]: value }
+        }));
+    };
+
+    const addQ2QuotePart = () => {
+        if (!q2QuoteAddName.trim() || !q2QuoteAddPrice) return;
+        setQ2QuoteParts(prev => [...prev, {
+            id: `q2-${Date.now()}`,
+            name: q2QuoteAddName.trim(),
+            qty: parseInt(q2QuoteAddQty) || 1,
+            price: parseFloat(q2QuoteAddPrice) || 0,
+        }]);
+        setQ2QuoteAddCat(''); setQ2QuoteAddName(''); setQ2QuoteAddQty('1'); setQ2QuoteAddPrice('');
+        setQ2ShowQuoteAdd(false);
+    };
+
+    const addQ2Supplier = () => {
+        if (!q2Spo12AddName.trim()) return;
+        const id = q2Spo12AddName.trim().toLowerCase().replace(/\s+/g, '-');
+        const palette = ['#f59e0b', '#06b6d4', '#84cc16', '#f43f5e', '#8b5cf6'];
+        const color = palette[q2Spo12Suppliers.length % palette.length];
+        setQ2Spo12Suppliers(prev => [...prev, { id, name: q2Spo12AddName.trim(), color }]);
+        setQ2Spo12SelectedIds(prev => [...prev, id]);
+        setQ2Spo12AddName('');
+        setQ2Spo12ShowAdd(false);
+    };
 
     const generateOrderMsg = (supplier: string) => {
         if (!supplier || quoteParts.length === 0) return;
@@ -737,6 +906,825 @@ Autoflow Service Centre
         return colors[role] || 'bg-gray-100 text-gray-800 border-gray-300';
     };
 
+    // ─── 2nd Quotation Step UI (Steps 7–13) ─────────────────────────────────
+    const getQ2StepUI = (stepNumber: number) => {
+        const q2Parts = Object.values(q2SelectedParts);
+        switch (stepNumber) {
+
+            case 7: return (
+                <div className="space-y-4">
+                    <div className="bg-orange-50 border-l-4 border-orange-400 p-3 rounded-r-lg">
+                        <p className="text-sm text-orange-800"><strong>2nd Quotation:</strong> Select additional parts discovered during repair.</p>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Parts Category</label>
+                        <select value={q2PartsCategory} onChange={e => setQ2PartsCategory(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 bg-white">
+                            <option value="">-- Select Category --</option>
+                            {Object.keys(PARTS_CATALOG).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                        </select>
+                    </div>
+                    {q2PartsCategory && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {(PARTS_CATALOG[q2PartsCategory] || []).map((part: { id: string; name: string; price: number }) => {
+                                const sel = !!q2SelectedParts[part.id];
+                                return (
+                                    <div key={part.id} onClick={() => toggleQ2Part(part)}
+                                        className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${sel ? 'border-orange-400 bg-orange-50' : 'border-gray-200 hover:border-orange-300'}`}>
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-medium text-sm">{part.name}</span>
+                                            <span className="text-sm text-gray-500">RM {part.price.toFixed(2)}</span>
+                                        </div>
+                                        {sel && (
+                                            <div className="mt-2 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                <label className="text-xs text-gray-600">Qty:</label>
+                                                <input type="number" min="1" value={q2SelectedParts[part.id].qty}
+                                                    onChange={e => updateQ2Qty(part.id, parseInt(e.target.value) || 1)}
+                                                    className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-400 focus:outline-none" />
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                    {q2Parts.length > 0 && (
+                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-1">
+                            <p className="text-xs font-semibold text-orange-800 mb-2">{q2Parts.length} part(s) selected</p>
+                            {q2Parts.map((p: PartEntry) => (
+                                <div key={p.id} className="flex justify-between text-sm text-gray-700">
+                                    <span>{p.name} × {p.qty}</span>
+                                    <span>RM {(p.price * p.qty).toFixed(2)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {q2Parts.length > 0 && (
+                        <button onClick={generateQ2SupplierMsg}
+                            className="flex items-center gap-2 bg-orange-500 text-white px-5 py-2 rounded-lg hover:bg-orange-600">
+                            <MessageSquare className="w-4 h-4" /> Generate Supplier Message
+                        </button>
+                    )}
+                    {q2SupplierMsg && (
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center justify-between">
+                                <span className="text-sm font-semibold">Supplier Message — {Q2_WORKFLOW_CODE}</span>
+                                <div className="flex gap-2">
+                                    <button onClick={() => { navigator.clipboard.writeText(q2SupplierMsg); setQ2MsgCopied(true); setTimeout(() => setQ2MsgCopied(false), 2500); }}
+                                        className={`flex items-center gap-1 text-xs px-3 py-1.5 border rounded-lg transition-colors ${q2MsgCopied ? 'bg-green-50 border-green-400 text-green-700' : 'bg-white border-gray-300 hover:bg-gray-50'}`}>
+                                        {q2MsgCopied ? <><CheckCheck className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
+                                    </button>
+                                    <button onClick={() => window.open(`https://api.whatsapp.com/send/?text=${encodeURIComponent(q2SupplierMsg)}&type=custom_url&app_absent=0`, '_blank')}
+                                        className="flex items-center gap-1 text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700">
+                                        <Share2 className="w-3 h-3" /> WhatsApp
+                                    </button>
+                                </div>
+                            </div>
+                            <textarea value={q2SupplierMsg} onChange={e => setQ2SupplierMsg(e.target.value)}
+                                rows={12} className="w-full p-4 font-mono text-sm text-gray-700 bg-white focus:outline-none resize-y" spellCheck={false} />
+                        </div>
+                    )}
+                    <button onClick={() => completeQ2Step(7)} disabled={!q2PartsConfirmed}
+                        className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2">
+                        <Check className="w-4 h-4" /> Confirm Parts List
+                    </button>
+                </div>
+            );
+
+            case 8: {
+                const q2Total8 = q2Parts.reduce((s: number, p: PartEntry) => {
+                    const price = parseFloat(getQ2Quote(p.id).price);
+                    return s + (isNaN(price) ? 0 : price * p.qty);
+                }, 0);
+                const q2AllFilled = q2Parts.length > 0 && q2Parts.every((p: PartEntry) => getQ2Quote(p.id).price !== '' && !isNaN(parseFloat(getQ2Quote(p.id).price)));
+                return (
+                    <div className="space-y-4">
+                        <div className="bg-orange-50 border-l-4 border-orange-400 p-3 rounded-r-lg">
+                            <p className="text-sm text-orange-800"><strong>2nd Quotation:</strong> Enter supplier prices for the additional parts.</p>
+                        </div>
+                        {q2Parts.length === 0 ? (
+                            <div className="border border-amber-200 bg-amber-50 rounded-lg px-4 py-3 text-sm text-amber-800 flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4 shrink-0" /> Complete Step 7 (Q2 Parts) first.
+                            </div>
+                        ) : (
+                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="bg-gray-50 border-b border-gray-200">
+                                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Part</th>
+                                            <th className="px-4 py-3 text-center font-semibold text-gray-700">Qty</th>
+                                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Supplier Price (RM)</th>
+                                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Availability</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {q2Parts.map((p: PartEntry) => {
+                                            const q = getQ2Quote(p.id);
+                                            return (
+                                                <tr key={p.id} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 font-medium text-gray-800">{p.name}</td>
+                                                    <td className="px-4 py-3 text-center text-gray-600">{p.qty}</td>
+                                                    <td className="px-4 py-3">
+                                                        <input type="number" value={q.price} onChange={e => updateQ2Quote(p.id, 'price', e.target.value)}
+                                                            placeholder="0.00" className="w-28 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none" />
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <select value={q.availability} onChange={e => updateQ2Quote(p.id, 'availability', e.target.value)}
+                                                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-400 focus:outline-none">
+                                                            <option>In Stock</option>
+                                                            <option>To Order</option>
+                                                            <option>Not Available</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr className="bg-orange-50 border-t-2 border-orange-200">
+                                            <td colSpan={2} className="px-4 py-2.5 font-semibold text-orange-800">Total Cost</td>
+                                            <td className="px-4 py-2.5 font-bold text-orange-800">RM {q2Total8.toFixed(2)}</td>
+                                            <td />
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        )}
+                        <button onClick={() => completeQ2Step(8)} disabled={!q2AllFilled}
+                            className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2">
+                            <Check className="w-4 h-4" /> Confirm Supplier Prices
+                        </button>
+                    </div>
+                );
+            }
+
+            case 9: {
+                const q2TotalCost = q2Parts.reduce((s: number, p: PartEntry) => {
+                    const sp = parseFloat(getQ2Quote(p.id).price);
+                    return s + (isNaN(sp) ? 0 : sp * p.qty);
+                }, 0);
+                const q2TotalMarkup = q2Parts.reduce((s: number, p: PartEntry) => {
+                    const mp = parseFloat(q2MarkupPrices[p.id] ?? '');
+                    return s + (isNaN(mp) ? 0 : mp * p.qty);
+                }, 0);
+                const q2Margin = q2TotalMarkup > 0 ? ((q2TotalMarkup - q2TotalCost) / q2TotalMarkup) * 100 : null;
+                const q2AllValid = q2Parts.length > 0 && q2Parts.every((p: PartEntry) => {
+                    const sp = parseFloat(getQ2Quote(p.id).price);
+                    const mp = parseFloat(q2MarkupPrices[p.id] ?? '');
+                    if (isNaN(sp) || isNaN(mp) || mp <= 0) return false;
+                    return calcMargin(sp, mp) !== null && (calcMargin(sp, mp) ?? 0) >= MIN_MARGIN;
+                });
+                return (
+                    <div className="space-y-4">
+                        <div className="bg-orange-50 border-l-4 border-orange-400 p-3 rounded-r-lg">
+                            <p className="text-sm text-orange-800"><strong>2nd Quotation:</strong> Apply markup — minimum 60% margin required.</p>
+                        </div>
+                        {q2Parts.length === 0 ? (
+                            <div className="border border-amber-200 bg-amber-50 rounded-lg px-4 py-3 text-sm text-amber-800 flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4 shrink-0" /> Complete Steps 7 & 8 first.
+                            </div>
+                        ) : (
+                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="bg-gray-50 border-b border-gray-200">
+                                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Part</th>
+                                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Cost/unit</th>
+                                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Markup Price</th>
+                                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Margin</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {q2Parts.map((p: PartEntry) => {
+                                            const sp = parseFloat(getQ2Quote(p.id).price) || 0;
+                                            const mp = parseFloat(q2MarkupPrices[p.id] ?? '') || 0;
+                                            const margin = sp > 0 && mp > 0 ? calcMargin(sp, mp) : null;
+                                            return (
+                                                <tr key={p.id} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 font-medium text-gray-800">{p.name} × {p.qty}</td>
+                                                    <td className="px-4 py-3 text-right text-gray-600">RM {sp.toFixed(2)}</td>
+                                                    <td className="px-4 py-3">
+                                                        <input type="number" value={q2MarkupPrices[p.id] || ''} onChange={e => setQ2MarkupPrices(prev => ({ ...prev, [p.id]: e.target.value }))}
+                                                            placeholder="0.00" className="w-28 px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none" />
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        {margin !== null
+                                                            ? <span className={`text-sm font-semibold ${margin >= 60 ? 'text-green-600' : 'text-red-600'}`}>{margin.toFixed(1)}%</span>
+                                                            : <span className="text-gray-300">—</span>}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                    {q2TotalMarkup > 0 && (
+                                        <tfoot>
+                                            <tr className="bg-orange-50 border-t-2 border-orange-200">
+                                                <td className="px-4 py-2.5 font-semibold text-orange-800">Totals</td>
+                                                <td className="px-4 py-2.5 text-right text-gray-600">RM {q2TotalCost.toFixed(2)}</td>
+                                                <td className="px-4 py-2.5 font-bold text-orange-700">RM {q2TotalMarkup.toFixed(2)}</td>
+                                                <td className="px-4 py-2.5 text-right">
+                                                    {q2Margin !== null && <span className={`font-bold ${q2Margin >= 60 ? 'text-green-600' : 'text-red-600'}`}>{q2Margin.toFixed(1)}%</span>}
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    )}
+                                </table>
+                            </div>
+                        )}
+                        <button onClick={() => completeQ2Step(9)} disabled={!q2AllValid}
+                            className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2">
+                            <Check className="w-4 h-4" /> Approve Markup Prices
+                        </button>
+                    </div>
+                );
+            }
+
+            case 10: {
+                const generateQ2CustomerMsg = () => {
+                    const dateStr = new Date().toLocaleDateString('en-MY', { day: '2-digit', month: 'long', year: 'numeric' });
+                    const total = q2Parts.reduce((s: number, p: PartEntry) => {
+                        const mp = parseFloat(q2MarkupPrices[p.id] ?? '') || 0;
+                        return s + mp * p.qty;
+                    }, 0);
+                    const lines = q2Parts.map((p: PartEntry, i: number) => {
+                        const mp = parseFloat(q2MarkupPrices[p.id] ?? '') || 0;
+                        return `  ${i + 1}. ${p.name} (×${p.qty}) — RM ${(mp * p.qty).toFixed(2)}`;
+                    }).join('\n');
+                    setQ2CustomerMsg(
+`Dear ${mockApprovalData.customerName},
+
+Additional parts have been identified for your vehicle during repair.
+
+Ref  : ${Q2_WORKFLOW_CODE}
+Date : ${dateStr}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADDITIONAL PARTS (2nd Quotation)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${lines}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADDITIONAL TOTAL : RM ${total.toFixed(2)}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Kindly approve to proceed with the additional repairs.
+
+Thank you,
+Autoflow Service Centre
++60 3-1234 5678`
+                    );
+                };
+                return (
+                    <div className="space-y-4">
+                        <div className="bg-orange-50 border-l-4 border-orange-400 p-3 rounded-r-lg">
+                            <p className="text-sm text-orange-800"><strong>2nd Quotation:</strong> Send additional parts approval to customer.</p>
+                        </div>
+                        {!q2CustomerMsg ? (
+                            <button onClick={generateQ2CustomerMsg}
+                                className="flex items-center gap-2 bg-orange-500 text-white px-5 py-2 rounded-lg hover:bg-orange-600">
+                                <MessageSquare className="w-4 h-4" /> Generate Customer Message
+                            </button>
+                        ) : (
+                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center justify-between">
+                                    <span className="text-sm font-semibold">Customer Message — {Q2_WORKFLOW_CODE}</span>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => { navigator.clipboard.writeText(q2CustomerMsg); setQ2CustomerMsgCopied(true); setTimeout(() => setQ2CustomerMsgCopied(false), 2500); }}
+                                            className={`flex items-center gap-1 text-xs px-3 py-1.5 border rounded-lg ${q2CustomerMsgCopied ? 'bg-green-50 border-green-400 text-green-700' : 'bg-white border-gray-300 hover:bg-gray-50'}`}>
+                                            {q2CustomerMsgCopied ? <><CheckCheck className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
+                                        </button>
+                                        <button onClick={() => window.open(`https://api.whatsapp.com/send/?text=${encodeURIComponent(q2CustomerMsg)}&type=custom_url&app_absent=0`, '_blank')}
+                                            className="flex items-center gap-1 text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700">
+                                            <Share2 className="w-3 h-3" /> WhatsApp
+                                        </button>
+                                    </div>
+                                </div>
+                                <textarea value={q2CustomerMsg} onChange={e => setQ2CustomerMsg(e.target.value)}
+                                    rows={16} className="w-full p-4 font-mono text-sm text-gray-700 bg-white focus:outline-none resize-y" spellCheck={false} />
+                            </div>
+                        )}
+                        <div className="border border-gray-200 rounded-lg p-4">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-3">Customer Approval Status</h4>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => { setQ2Approval([{ id: 'q2-approved', type: 'ORI' }]); completeQ2Step(10); }}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${q2Approval ? 'bg-green-600 text-white border-green-600' : 'bg-white border-green-400 text-green-700 hover:bg-green-50'}`}>
+                                    <Check className="w-4 h-4" /> Customer Approved
+                                </button>
+                                <button onClick={() => setQ2Approval(null)}
+                                    className="px-4 py-2 rounded-lg text-sm font-medium border-2 border-gray-200 text-gray-500 hover:bg-gray-50">
+                                    Pending
+                                </button>
+                            </div>
+                            {q2Approval && <p className="text-xs text-green-600 mt-2 font-medium">✓ Customer has approved the 2nd quotation</p>}
+                        </div>
+                    </div>
+                );
+            }
+
+            case 11: {
+                const q2Total11 = q2QuoteParts.reduce((s: number, p: QuotePart) => s + p.price * p.qty, 0);
+                return (
+                    <div className="space-y-4">
+                        <div className="bg-orange-50 border-l-4 border-orange-400 p-3 rounded-r-lg">
+                            <p className="text-sm text-orange-800"><strong>2nd Quotation ({Q2_WORKFLOW_CODE}):</strong> Build the formal quotation for additional parts.</p>
+                        </div>
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center justify-between">
+                                <span className="text-sm font-semibold text-gray-700">Q2 Quotation Parts</span>
+                                <span className="text-xs font-mono text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-200">{Q2_WORKFLOW_CODE}</span>
+                            </div>
+                            {q2QuoteParts.length === 0 ? (
+                                <div className="px-4 py-8 text-center text-sm text-gray-400">No parts added yet — use the button below</div>
+                            ) : (
+                                <>
+                                    <div className="divide-y divide-gray-100">
+                                        {q2QuoteParts.map((p: QuotePart) => (
+                                            <div key={p.id} className="flex items-center justify-between px-4 py-2.5">
+                                                <div>
+                                                    <span className="text-sm font-medium text-gray-800">{p.name}</span>
+                                                    <span className="ml-2 text-xs text-gray-400">× {p.qty}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-sm font-medium text-gray-700">RM {(p.price * p.qty).toFixed(2)}</span>
+                                                    <button onClick={() => setQ2QuoteParts(prev => prev.filter((x: QuotePart) => x.id !== p.id))}
+                                                        className="text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="flex items-center justify-between px-4 py-3 bg-orange-50 border-t-2 border-orange-200">
+                                        <span className="text-sm font-bold text-orange-800">Q2 Total</span>
+                                        <span className="text-base font-bold text-orange-800">RM {q2Total11.toFixed(2)}</span>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        {!q2ShowQuoteAdd ? (
+                            <button onClick={() => setQ2ShowQuoteAdd(true)}
+                                className="flex items-center justify-center gap-2 w-full text-sm text-orange-600 border border-dashed border-orange-300 rounded-lg px-4 py-2.5 hover:bg-orange-50 transition-colors">
+                                <Plus className="w-4 h-4" /> Add Part to Q2 Quotation
+                            </button>
+                        ) : (
+                            <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+                                <h4 className="text-sm font-semibold text-gray-700">Add Part</h4>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Category</label>
+                                        <select value={q2QuoteAddCat} onChange={e => { setQ2QuoteAddCat(e.target.value); setQ2QuoteAddName(''); setQ2QuoteAddPrice(''); }}
+                                            className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none bg-white">
+                                            <option value="">-- Select --</option>
+                                            {Object.keys(QUOTE_PARTS_CATALOG).map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Part Name</label>
+                                        <select value={q2QuoteAddName} onChange={e => {
+                                            const n = e.target.value;
+                                            setQ2QuoteAddName(n);
+                                            const found = (QUOTE_PARTS_CATALOG[q2QuoteAddCat] || []).find((x: { name: string; price: number }) => x.name === n);
+                                            if (found) setQ2QuoteAddPrice(String(found.price));
+                                        }} className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none bg-white">
+                                            <option value="">-- Select --</option>
+                                            {(QUOTE_PARTS_CATALOG[q2QuoteAddCat] || []).map((p: { name: string; price: number }) => <option key={p.name} value={p.name}>{p.name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Qty</label>
+                                        <input type="number" min="1" value={q2QuoteAddQty} onChange={e => setQ2QuoteAddQty(e.target.value)}
+                                            className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Price (RM)</label>
+                                        <input type="number" value={q2QuoteAddPrice} onChange={e => setQ2QuoteAddPrice(e.target.value)}
+                                            placeholder="0.00" className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none" />
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={addQ2QuotePart} disabled={!q2QuoteAddName || !q2QuoteAddPrice}
+                                        className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed">Add</button>
+                                    <button onClick={() => setQ2ShowQuoteAdd(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
+                                </div>
+                            </div>
+                        )}
+                        {q2QuoteParts.length > 0 && (
+                            <div className="flex gap-3">
+                                <button onClick={() => window.open(`https://api.whatsapp.com/send/?text=${encodeURIComponent(`Q2 Quotation ${Q2_WORKFLOW_CODE}\nTotal: RM ${q2Total11.toFixed(2)}`)}&type=custom_url&app_absent=0`, '_blank')}
+                                    className="flex items-center gap-2 bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700">
+                                    <Share2 className="w-4 h-4" /> Send Q2 Quotation via WhatsApp
+                                </button>
+                                <button onClick={() => completeQ2Step(11)}
+                                    className="flex items-center gap-2 bg-orange-500 text-white px-5 py-2 rounded-lg hover:bg-orange-600">
+                                    <Check className="w-4 h-4" /> Finalise Q2 Quotation
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
+            case 12: {
+                const Q2_SPO12_PARTS = q2QuoteParts.length > 0
+                    ? q2QuoteParts.map((p: QuotePart) => ({ id: p.id, name: p.name, types: ['ORI', 'OEM', 'LABOUR'] as const }))
+                    : [
+                        { id: 'q2-alternator', name: 'Alternator',  types: ['ORI', 'OEM', 'LABOUR'] as const },
+                        { id: 'q2-drive-belt', name: 'Drive Belt',  types: ['ORI', 'OEM', 'LABOUR'] as const },
+                        { id: 'q2-water-pump', name: 'Water Pump',  types: ['ORI', 'OEM', 'LABOUR'] as const },
+                    ];
+                const q2CalcMU  = (cost: number, pct: number) => Math.round(cost * (1 + pct / 100));
+                const q2GetCost = (partId: string, type: string, suppId: string): number => {
+                    const v = q2Spo12Costs[`${partId}_${type}_${suppId}`];
+                    return v ? (parseFloat(v) || 0) : 0;
+                };
+                const Q2_TYPE_COLOR: Record<string, string> = {
+                    ORI: 'text-emerald-600', OEM: 'text-amber-600', USED: 'text-orange-500', LABOUR: 'text-purple-600',
+                };
+                const q2SelSuppliers = q2Spo12Suppliers.filter(s => q2Spo12SelectedIds.includes(s.id));
+                return (
+                    <div className="space-y-5">
+                        {/* Supplier selection */}
+                        <div className="border border-gray-200 rounded-xl p-4 bg-white shadow-sm">
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-xs flex items-center justify-center font-bold shrink-0">1</span>
+                                <span className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Select Suppliers (Q2)</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {q2Spo12Suppliers.map(sup => {
+                                    const isSel = q2Spo12SelectedIds.includes(sup.id);
+                                    return (
+                                        <button key={sup.id}
+                                            onClick={() => setQ2Spo12SelectedIds(prev => prev.includes(sup.id) ? prev.filter(x => x !== sup.id) : [...prev, sup.id])}
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border-2 transition-all bg-white ${isSel ? 'shadow-sm text-gray-800' : 'text-gray-400 border-gray-200'}`}
+                                            style={isSel ? { borderColor: sup.color } : {}}>
+                                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: isSel ? sup.color : '#d1d5db' }} />
+                                            {sup.name}
+                                        </button>
+                                    );
+                                })}
+                                {q2Spo12ShowAdd ? (
+                                    <div className="flex items-center gap-2">
+                                        <input type="text" value={q2Spo12AddName} onChange={e => setQ2Spo12AddName(e.target.value)}
+                                            placeholder="Supplier name" autoFocus
+                                            onKeyDown={e => { if (e.key === 'Enter') addQ2Supplier(); if (e.key === 'Escape') { setQ2Spo12ShowAdd(false); setQ2Spo12AddName(''); } }}
+                                            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                                        <button onClick={addQ2Supplier} className="text-sm bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600">Add</button>
+                                        <button onClick={() => { setQ2Spo12ShowAdd(false); setQ2Spo12AddName(''); }} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                                    </div>
+                                ) : (
+                                    <button onClick={() => setQ2Spo12ShowAdd(true)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-gray-500 border-2 border-dashed border-gray-300 hover:border-orange-400 hover:text-orange-600 transition-colors">
+                                        <Plus className="w-3.5 h-3.5" /> Add New Supplier
+                                    </button>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                                <span className="text-base">💡</span>
+                                <p className="text-xs text-orange-800"><span className="font-semibold">{q2SelSuppliers.length} supplier(s) selected.</span> Unticked suppliers hidden from table.</p>
+                            </div>
+                        </div>
+                        {/* Markup % */}
+                        <div className="border border-gray-200 rounded-xl p-4 bg-white shadow-sm">
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-xs flex items-center justify-center font-bold shrink-0">2</span>
+                                <span className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Markup % (Parts Only — Labour Excluded)</span>
+                            </div>
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <span className="text-xs text-gray-500">Active Markup:</span>
+                                {([40, 55, 70] as const).map(pct => (
+                                    <button key={pct} onClick={() => setQ2Spo12Markup(pct)}
+                                        className={`px-4 py-1.5 rounded-lg text-sm font-semibold border transition-all ${q2Spo12Markup === pct ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>
+                                        {pct}%
+                                    </button>
+                                ))}
+                                <span className="text-xs text-gray-400 ml-1"><span className="text-blue-600 font-medium">Bold blue</span> = active markup.</span>
+                            </div>
+                        </div>
+                        {/* Tabs */}
+                        <div className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden">
+                            <div className="flex border-b border-gray-200 px-4 pt-3 gap-1 bg-gray-50">
+                                {([{ id: 'parts' as const, label: '⊞  Parts Table' }, { id: 'summary' as const, label: '📊  Summary' }, { id: 'whatsapp' as const, label: '💬  WhatsApp Orders' }]).map(tab => (
+                                    <button key={tab.id} onClick={() => setQ2Spo12Tab(tab.id)}
+                                        className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors -mb-px ${q2Spo12Tab === tab.id ? 'border-orange-500 text-orange-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-white'}`}>
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="p-4">
+                                {/* Parts Table tab */}
+                                {q2Spo12Tab === 'parts' && (
+                                    <div className="space-y-4">
+                                        {Q2_SPO12_PARTS.map(part => {
+                                            const TYPES = part.types;
+                                            return (
+                                                <div key={part.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                                                    <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+                                                        <span className="font-semibold text-gray-800 text-sm">{part.name}</span>
+                                                        {q2Spo12Ordered[part.id] ? (
+                                                            <div className="flex items-center gap-1.5 text-green-600 text-xs font-medium">
+                                                                <div className="w-5 h-5 rounded bg-green-500 flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>
+                                                                Ordered
+                                                            </div>
+                                                        ) : (
+                                                            <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
+                                                                <input type="checkbox" checked={false} onChange={e => setQ2Spo12Ordered(prev => ({ ...prev, [part.id]: e.target.checked }))} className="w-3.5 h-3.5 accent-orange-500" />
+                                                                Mark as Ordered
+                                                            </label>
+                                                        )}
+                                                    </div>
+                                                    <table className="w-full text-xs">
+                                                        <thead>
+                                                            <tr className="bg-gray-50 border-b border-gray-200">
+                                                                <th className="px-4 py-2 text-left text-gray-500 font-semibold w-36">Supplier</th>
+                                                                {TYPES.map(type => (
+                                                                    <th key={type} className={`px-3 py-2 text-center font-bold tracking-wide ${Q2_TYPE_COLOR[type]}`}>{type}</th>
+                                                                ))}
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-gray-100">
+                                                            {q2SelSuppliers.map(sup => (
+                                                                <tr key={sup.id} className="hover:bg-gray-50/60">
+                                                                    <td className="px-4 py-2.5">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: sup.color }} />
+                                                                            <span className="font-medium text-gray-700">{sup.name}</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    {TYPES.map(type => {
+                                                                        const costKey   = `${part.id}_${type}_${sup.id}`;
+                                                                        const costVal   = q2Spo12Costs[costKey] || '';
+                                                                        const costNum   = parseFloat(costVal) || 0;
+                                                                        const isLabour  = type === 'LABOUR';
+                                                                        const validCosts = q2SelSuppliers.map(s => parseFloat(q2Spo12Costs[`${part.id}_${type}_${s.id}`] || '') || 0).filter(c => c > 0);
+                                                                        const minCost   = validCosts.length ? Math.min(...validCosts) : null;
+                                                                        const isCheapest = costNum > 0 && costNum === minCost;
+                                                                        return (
+                                                                            <td key={type} className="px-3 py-2 text-center">
+                                                                                <div className="flex flex-col items-center gap-1">
+                                                                                    <div className="relative">
+                                                                                        {isCheapest && <span className="absolute -top-2 -right-1 text-amber-400 text-xs leading-none pointer-events-none">★</span>}
+                                                                                        <input type="number" value={costVal} onChange={e => setQ2Spo12Costs(prev => ({ ...prev, [costKey]: e.target.value }))}
+                                                                                            placeholder="—"
+                                                                                            className={`w-20 px-2 py-1 text-xs text-center rounded border focus:ring-1 focus:ring-orange-400 focus:outline-none ${costVal ? 'bg-amber-50 border-amber-200 font-medium' : 'bg-gray-50 border-gray-200 text-gray-300'}`} />
+                                                                                    </div>
+                                                                                    {costNum > 0 && !isLabour && (
+                                                                                        <div className="flex items-center gap-0.5 text-[10px] text-gray-400 leading-none">
+                                                                                            {([40, 55, 70] as const).map((pct, i) => (
+                                                                                                <Fragment key={pct}>
+                                                                                                    {i > 0 && <span className="text-gray-300">/</span>}
+                                                                                                    <span className={q2Spo12Markup === pct ? 'text-blue-600 font-bold' : ''}>{q2CalcMU(costNum, pct)}</span>
+                                                                                                </Fragment>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {costNum > 0 && isLabour && <span className="text-[10px] text-gray-400 italic">fixed</span>}
+                                                                                </div>
+                                                                            </td>
+                                                                        );
+                                                                    })}
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                        <tfoot>
+                                                            <tr className="bg-amber-50 border-t-2 border-amber-200">
+                                                                <td className="px-4 py-2 text-xs font-semibold text-amber-800">Customer Charge</td>
+                                                                {TYPES.map(type => {
+                                                                    const rowKey   = `${part.id}_${type}`;
+                                                                    const isLabour = type === 'LABOUR';
+                                                                    return (
+                                                                        <td key={type} className="px-3 py-2">
+                                                                            <div className="flex flex-col gap-1">
+                                                                                <select value={q2Spo12Charge[rowKey] || ''}
+                                                                                    onChange={e => {
+                                                                                        const supId = e.target.value;
+                                                                                        setQ2Spo12Charge(prev => ({ ...prev, [rowKey]: supId }));
+                                                                                        if (supId) {
+                                                                                            const c = q2GetCost(part.id, type, supId);
+                                                                                            const auto = isLabour ? c : q2CalcMU(c, q2Spo12Markup);
+                                                                                            setQ2Spo12ChargeAmt(prev => ({ ...prev, [rowKey]: auto > 0 ? String(auto) : '' }));
+                                                                                        } else {
+                                                                                            setQ2Spo12ChargeAmt(prev => ({ ...prev, [rowKey]: '' }));
+                                                                                        }
+                                                                                    }}
+                                                                                    className="w-full text-xs border border-amber-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-orange-400">
+                                                                                    <option value="">— None —</option>
+                                                                                    {q2SelSuppliers.map(sup => {
+                                                                                        const c = q2GetCost(part.id, type, sup.id);
+                                                                                        if (!c) return null;
+                                                                                        return <option key={sup.id} value={sup.id}>{sup.name}</option>;
+                                                                                    })}
+                                                                                </select>
+                                                                                {q2Spo12Charge[rowKey] && (
+                                                                                    <div className="flex items-center gap-1">
+                                                                                        <span className="text-[10px] text-amber-700 font-medium shrink-0">RM</span>
+                                                                                        <input type="number" value={q2Spo12ChargeAmt[rowKey] || ''} onChange={e => setQ2Spo12ChargeAmt(prev => ({ ...prev, [rowKey]: e.target.value }))}
+                                                                                            placeholder="0"
+                                                                                            className="w-full text-xs text-center border border-amber-300 rounded px-1.5 py-0.5 bg-amber-50 font-semibold focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        </td>
+                                                                    );
+                                                                })}
+                                                            </tr>
+                                                        </tfoot>
+                                                    </table>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                {/* Summary tab */}
+                                {q2Spo12Tab === 'summary' && (
+                                    <div className="space-y-3">
+                                        <p className="text-xs text-gray-500">Final Q2 customer charges — editable amounts reflected here.</p>
+                                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                            <table className="w-full text-xs">
+                                                <thead>
+                                                    <tr className="bg-gray-50 border-b border-gray-200">
+                                                        <th className="px-3 py-2 text-left font-semibold text-gray-700">Part</th>
+                                                        <th className="px-3 py-2 text-left font-semibold text-gray-700">Type</th>
+                                                        <th className="px-3 py-2 text-left font-semibold text-gray-700">Buy From</th>
+                                                        <th className="px-3 py-2 text-right font-semibold text-gray-700">Cost (RM)</th>
+                                                        <th className="px-3 py-2 text-right font-semibold text-gray-700">Charge (RM)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100">
+                                                    {Q2_SPO12_PARTS.flatMap(part =>
+                                                        part.types.map(type => {
+                                                            const rk      = `${part.id}_${type}`;
+                                                            const cId     = q2Spo12Charge[rk];
+                                                            if (!cId) return null;
+                                                            const cost    = q2GetCost(part.id, type, cId);
+                                                            if (!cost) return null;
+                                                            const supName = q2Spo12Suppliers.find(s => s.id === cId)?.name || '';
+                                                            const charge  = parseFloat(q2Spo12ChargeAmt[rk] || '0') || 0;
+                                                            return (
+                                                                <tr key={rk} className="hover:bg-gray-50">
+                                                                    <td className="px-3 py-2 font-medium text-gray-800">{part.name}</td>
+                                                                    <td className={`px-3 py-2 font-semibold ${Q2_TYPE_COLOR[type]}`}>{type}</td>
+                                                                    <td className="px-3 py-2 text-gray-600">{supName}</td>
+                                                                    <td className="px-3 py-2 text-right text-gray-500">{cost.toFixed(2)}</td>
+                                                                    <td className="px-3 py-2 text-right font-semibold text-gray-800">{charge.toFixed(2)}</td>
+                                                                </tr>
+                                                            );
+                                                        }).filter(Boolean)
+                                                    )}
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr className="bg-orange-50 border-t-2 border-orange-200">
+                                                        <td colSpan={4} className="px-3 py-2 font-semibold text-orange-800">Q2 Total Customer Charge</td>
+                                                        <td className="px-3 py-2 text-right font-bold text-orange-800">
+                                                            RM {Q2_SPO12_PARTS.flatMap(part =>
+                                                                part.types.map(type => parseFloat(q2Spo12ChargeAmt[`${part.id}_${type}`] || '0') || 0)
+                                                            ).reduce((a, b) => a + b, 0).toFixed(2)}
+                                                        </td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+                                {/* WhatsApp Orders tab */}
+                                {q2Spo12Tab === 'whatsapp' && (
+                                    <div className="space-y-4">
+                                        <p className="text-xs text-gray-500">Per-supplier order messages for Q2 parts</p>
+                                        {q2SelSuppliers.map(sup => {
+                                            const supParts = Q2_SPO12_PARTS.flatMap(part =>
+                                                part.types.filter(type => q2Spo12Charge[`${part.id}_${type}`] === sup.id && q2GetCost(part.id, type, sup.id) > 0)
+                                                    .map(type => ({ partName: part.name, type, cost: q2GetCost(part.id, type, sup.id) }))
+                                            );
+                                            if (supParts.length === 0) return (
+                                                <div key={sup.id} className="border border-gray-100 rounded-lg px-4 py-3 text-xs text-gray-400 flex items-center gap-2">
+                                                    <span className="w-3 h-3 rounded-full" style={{ background: sup.color }} />
+                                                    <span className="font-medium" style={{ color: sup.color }}>{sup.name}</span>
+                                                    <span>— No Q2 parts from this supplier</span>
+                                                </div>
+                                            );
+                                            const msg = `Dear ${sup.name},\n\n2nd Quotation Order\nRef: ${Q2_WORKFLOW_CODE}\nVehicle: ${PLATE_NUMBER}\n\nParts:\n${supParts.map((p, i) => `${i + 1}. ${p.partName} (${p.type}) — Cost: RM${p.cost}`).join('\n')}\n\nPlease confirm availability and ETA.\n\nThank you,\nAutoflow Service Centre`;
+                                            return (
+                                                <div key={sup.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                                                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100" style={{ background: `${sup.color}18` }}>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-3 h-3 rounded-full" style={{ background: sup.color }} />
+                                                            <span className="text-sm font-semibold" style={{ color: sup.color }}>{sup.name}</span>
+                                                            <span className="text-xs text-gray-400">· {supParts.length} item(s)</span>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => navigator.clipboard.writeText(msg)}
+                                                                className="flex items-center gap-1 text-xs border border-gray-300 bg-white rounded-lg px-2.5 py-1 hover:bg-gray-50">
+                                                                <Copy className="w-3 h-3" /> Copy
+                                                            </button>
+                                                            <button onClick={() => window.open(`https://api.whatsapp.com/send/?text=${encodeURIComponent(msg)}&type=custom_url&app_absent=0`, '_blank')}
+                                                                className="flex items-center gap-1 text-xs bg-green-600 text-white rounded-lg px-2.5 py-1 hover:bg-green-700">
+                                                                <Share2 className="w-3 h-3" /> WhatsApp
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <pre className="px-4 py-3 text-xs text-gray-700 whitespace-pre-wrap font-mono bg-white leading-relaxed">{msg}</pre>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                            <p className="text-xs text-gray-400 italic">Q2 prices recalculate live</p>
+                            <button onClick={() => completeQ2Step(12)}
+                                className="bg-orange-500 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-orange-600 flex items-center gap-2">
+                                <Check className="w-4 h-4" /> Mark Step Complete →
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            case 13: {
+                const updateQ2Received = (id: string, field: 'qtyReceived' | 'condition', value: string) =>
+                    setQ2ReceivedParts(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
+                const q2AllConfirmed = q2QuoteParts.length > 0 &&
+                    q2QuoteParts.every((p: QuotePart) => q2ReceivedParts[p.id]?.qtyReceived !== '' && Number(q2ReceivedParts[p.id]?.qtyReceived) > 0);
+                return (
+                    <div className="space-y-4">
+                        <div className="bg-orange-50 border-l-4 border-orange-400 p-3 rounded-r-lg">
+                            <p className="text-sm text-orange-800"><strong>2nd Quotation:</strong> Confirm receipt of Q2 parts in workshop.</p>
+                        </div>
+                        {q2QuoteParts.length === 0 ? (
+                            <div className="border border-amber-200 bg-amber-50 rounded-lg px-4 py-3 text-sm text-amber-800 flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4 shrink-0" /> Complete Q2 Steps 7–12 to see parts here.
+                            </div>
+                        ) : (
+                            <>
+                                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                    <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center justify-between">
+                                        <span className="text-sm font-semibold text-gray-700">Q2 Parts Receipt — {Q2_WORKFLOW_CODE}</span>
+                                        <button onClick={() => {
+                                            const upd: Record<string, ReceivedPart> = {};
+                                            q2QuoteParts.forEach((p: QuotePart) => { upd[p.id] = { qtyOrdered: p.qty, qtyReceived: String(p.qty), condition: 'Good' }; });
+                                            setQ2ReceivedParts(upd);
+                                        }} className="text-xs text-orange-600 border border-orange-200 bg-orange-50 px-3 py-1 rounded-lg hover:bg-orange-100">
+                                            Mark All as Good
+                                        </button>
+                                    </div>
+                                    <div className="divide-y divide-gray-100">
+                                        {q2QuoteParts.map((p: QuotePart) => {
+                                            const rec = q2ReceivedParts[p.id] ?? { qtyOrdered: p.qty, qtyReceived: String(p.qty), condition: 'Good' };
+                                            const condColor = rec.condition === 'Good' ? 'text-green-700 bg-green-50 border-green-200'
+                                                : rec.condition === 'Damaged' ? 'text-red-700 bg-red-50 border-red-200'
+                                                : 'text-amber-700 bg-amber-50 border-amber-200';
+                                            return (
+                                                <div key={p.id} className="px-4 py-3">
+                                                    <div className="flex items-center justify-between mb-2.5">
+                                                        <div>
+                                                            <span className="text-sm font-medium text-gray-800">{p.name}</span>
+                                                            <span className="ml-2 text-xs text-gray-400">Ordered: {p.qty} unit{p.qty !== 1 ? 's' : ''}</span>
+                                                        </div>
+                                                        <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${condColor}`}>{rec.condition}</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div>
+                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Qty Received</label>
+                                                            <input type="number" min="0" value={rec.qtyReceived} onChange={e => updateQ2Received(p.id, 'qtyReceived', e.target.value)}
+                                                                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Condition</label>
+                                                            <select value={rec.condition} onChange={e => updateQ2Received(p.id, 'condition', e.target.value)}
+                                                                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-orange-400">
+                                                                <option>Good</option>
+                                                                <option>Damaged</option>
+                                                                <option>Wrong Item</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="bg-gray-50 px-4 py-2.5 border-t border-gray-200 flex justify-between items-center">
+                                        <span className="text-sm font-semibold text-gray-700">Q2 Parts Received</span>
+                                        <span className="font-bold text-orange-700">
+                                            {Object.values(q2ReceivedParts).filter(r => r.condition === 'Good' && Number(r.qtyReceived) > 0).length} / {q2QuoteParts.length} in good condition
+                                        </span>
+                                    </div>
+                                </div>
+                                <button onClick={() => completeQ2Step(13)} disabled={!q2AllConfirmed}
+                                    className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2">
+                                    <Check className="w-4 h-4" /> Confirm All Q2 Parts Received
+                                </button>
+                            </>
+                        )}
+                    </div>
+                );
+            }
+
+            default: return null;
+        }
+    };
+
     const getStepUI = (stepNumber: number) => {
         switch (stepNumber) {
             case 1: // Create Workflow
@@ -762,8 +1750,15 @@ Autoflow Service Centre
                             >
                                 <Check className="w-4 h-4" /> Create Workflow
                             </button>
-                            <button className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300">
-                                Cancel
+                            <button
+                                onClick={() => {
+                                    if (confirm('Delete this workflow? This action cannot be undone.')) {
+                                        navigate('/workflows');
+                                    }
+                                }}
+                                className="flex items-center gap-2 bg-red-50 text-red-700 px-6 py-2 rounded-lg hover:bg-red-100 border border-red-300"
+                            >
+                                <X className="w-4 h-4" /> Delete Workflow
                             </button>
                         </div>
                     </div>
@@ -2283,23 +3278,44 @@ If you have any questions, please contact us at +60 12-345 6789.`}</pre>
                                                                     const isLabour = type === 'LABOUR';
                                                                     return (
                                                                         <td key={type} className="px-3 py-2">
-                                                                            <select
-                                                                                value={spo12Charge[rowKey] || ''}
-                                                                                onChange={e => setSpo12Charge(prev => ({ ...prev, [rowKey]: e.target.value }))}
-                                                                                className="w-full text-xs border border-amber-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                                                                            >
-                                                                                <option value="">— None —</option>
-                                                                                {selectedSuppliers.map(sup => {
-                                                                                    const c = getCost(part.id, type, sup.id);
-                                                                                    if (!c) return null;
-                                                                                    const price = isLabour ? c : calcMU(c, spo12Markup);
-                                                                                    return (
-                                                                                        <option key={sup.id} value={sup.id}>
-                                                                                            {sup.name} · RM {price}
-                                                                                        </option>
-                                                                                    );
-                                                                                })}
-                                                                            </select>
+                                                                            <div className="flex flex-col gap-1">
+                                                                                <select
+                                                                                    value={spo12Charge[rowKey] || ''}
+                                                                                    onChange={e => {
+                                                                                        const supId = e.target.value;
+                                                                                        setSpo12Charge(prev => ({ ...prev, [rowKey]: supId }));
+                                                                                        if (supId) {
+                                                                                            const c = getCost(part.id, type, supId);
+                                                                                            const auto = isLabour ? c : calcMU(c, spo12Markup);
+                                                                                            setSpo12ChargeAmt(prev => ({ ...prev, [rowKey]: auto > 0 ? String(auto) : '' }));
+                                                                                        } else {
+                                                                                            setSpo12ChargeAmt(prev => ({ ...prev, [rowKey]: '' }));
+                                                                                        }
+                                                                                    }}
+                                                                                    className="w-full text-xs border border-amber-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                                                                >
+                                                                                    <option value="">— None —</option>
+                                                                                    {selectedSuppliers.map(sup => {
+                                                                                        const c = getCost(part.id, type, sup.id);
+                                                                                        if (!c) return null;
+                                                                                        return (
+                                                                                            <option key={sup.id} value={sup.id}>{sup.name}</option>
+                                                                                        );
+                                                                                    })}
+                                                                                </select>
+                                                                                {spo12Charge[rowKey] && (
+                                                                                    <div className="flex items-center gap-1">
+                                                                                        <span className="text-[10px] text-amber-700 font-medium shrink-0">RM</span>
+                                                                                        <input
+                                                                                            type="number"
+                                                                                            value={spo12ChargeAmt[rowKey] || ''}
+                                                                                            onChange={e => setSpo12ChargeAmt(prev => ({ ...prev, [rowKey]: e.target.value }))}
+                                                                                            placeholder="0"
+                                                                                            className="w-full text-xs text-center border border-amber-300 rounded px-1.5 py-0.5 bg-amber-50 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                                                                        />
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
                                                                         </td>
                                                                     );
                                                                 })}
@@ -2320,7 +3336,7 @@ If you have any questions, please contact us at +60 12-345 6789.`}</pre>
                                 {spo12Tab === 'summary' && (
                                     <div className="space-y-3">
                                         <p className="text-xs text-gray-500">
-                                            Summary of selected customer charges at <span className="font-semibold text-indigo-600">{spo12Markup}%</span> active markup
+                                            Final customer charges — editable amounts from the Parts Table are reflected here.
                                         </p>
                                         <div className="border border-gray-200 rounded-lg overflow-hidden">
                                             <table className="w-full text-xs">
@@ -2328,28 +3344,34 @@ If you have any questions, please contact us at +60 12-345 6789.`}</pre>
                                                     <tr className="bg-gray-50 border-b border-gray-200">
                                                         <th className="px-3 py-2 text-left font-semibold text-gray-700">Part</th>
                                                         <th className="px-3 py-2 text-left font-semibold text-gray-700">Type</th>
-                                                        <th className="px-3 py-2 text-left font-semibold text-gray-700">Supplier</th>
-                                                        <th className="px-3 py-2 text-right font-semibold text-gray-700">Cost (RM)</th>
-                                                        <th className="px-3 py-2 text-right font-semibold text-gray-700">Charge (RM)</th>
+                                                        <th className="px-3 py-2 text-left font-semibold text-gray-700">Buy From</th>
+                                                        <th className="px-3 py-2 text-right font-semibold text-gray-700">Supplier Cost (RM)</th>
+                                                        <th className="px-3 py-2 text-right font-semibold text-gray-700">Customer Charge (RM)</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100">
                                                     {SPO12_PARTS.flatMap(part =>
                                                         (['ORI', 'OEM', 'USED', 'LABOUR'] as const).map(type => {
-                                                            const rk = `${part.id}_${type}`;
-                                                            const cId = spo12Charge[rk];
+                                                            const rk      = `${part.id}_${type}`;
+                                                            const cId     = spo12Charge[rk];
                                                             if (!cId) return null;
-                                                            const cost = getCost(part.id, type, cId);
+                                                            const cost    = getCost(part.id, type, cId);
                                                             if (!cost) return null;
                                                             const supName = spo12Suppliers.find(s => s.id === cId)?.name || '';
-                                                            const charge  = type === 'LABOUR' ? cost : calcMU(cost, spo12Markup);
+                                                            const charge  = parseFloat(spo12ChargeAmt[rk] || '0') || 0;
+                                                            const profit  = charge - cost;
                                                             return (
                                                                 <tr key={rk} className="hover:bg-gray-50">
                                                                     <td className="px-3 py-2 font-medium text-gray-800">{part.name}</td>
                                                                     <td className={`px-3 py-2 font-semibold ${TYPE_COLOR[type]}`}>{type}</td>
                                                                     <td className="px-3 py-2 text-gray-600">{supName}</td>
-                                                                    <td className="px-3 py-2 text-right text-gray-600">{cost}</td>
-                                                                    <td className="px-3 py-2 text-right font-semibold text-gray-800">{charge}</td>
+                                                                    <td className="px-3 py-2 text-right text-gray-500">{cost.toFixed(2)}</td>
+                                                                    <td className="px-3 py-2 text-right">
+                                                                        <span className="font-semibold text-gray-800">{charge.toFixed(2)}</span>
+                                                                        {type !== 'LABOUR' && profit > 0 && (
+                                                                            <span className="ml-1.5 text-[10px] text-green-600 font-medium">+{profit.toFixed(0)}</span>
+                                                                        )}
+                                                                    </td>
                                                                 </tr>
                                                             );
                                                         }).filter(Boolean)
@@ -2357,16 +3379,25 @@ If you have any questions, please contact us at +60 12-345 6789.`}</pre>
                                                 </tbody>
                                                 <tfoot>
                                                     <tr className="bg-indigo-50 border-t-2 border-indigo-200">
-                                                        <td colSpan={4} className="px-3 py-2 font-semibold text-indigo-800">Total Customer Charge</td>
-                                                        <td className="px-3 py-2 text-right font-bold text-indigo-800">
+                                                        <td colSpan={3} className="px-3 py-2 font-semibold text-indigo-800">Total</td>
+                                                        <td className="px-3 py-2 text-right font-semibold text-gray-600">
                                                             RM {SPO12_PARTS.flatMap(part =>
                                                                 (['ORI', 'OEM', 'USED', 'LABOUR'] as const).map(type => {
                                                                     const cId = spo12Charge[`${part.id}_${type}`];
                                                                     if (!cId) return 0;
-                                                                    const c = getCost(part.id, type, cId);
-                                                                    return type === 'LABOUR' ? c : calcMU(c, spo12Markup);
+                                                                    return getCost(part.id, type, cId);
                                                                 })
-                                                            ).reduce((a, b) => a + b, 0)}
+                                                            ).reduce((a, b) => a + b, 0).toFixed(2)}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-right font-bold text-indigo-800">
+                                                            RM {SPO12_PARTS.flatMap(part =>
+                                                                (['ORI', 'OEM', 'USED', 'LABOUR'] as const).map(type => {
+                                                                    const rk  = `${part.id}_${type}`;
+                                                                    const cId = spo12Charge[rk];
+                                                                    if (!cId) return 0;
+                                                                    return parseFloat(spo12ChargeAmt[rk] || '0') || 0;
+                                                                })
+                                                            ).reduce((a, b) => a + b, 0).toFixed(2)}
                                                         </td>
                                                     </tr>
                                                 </tfoot>
@@ -2594,7 +3625,7 @@ If you have any questions, please contact us at +60 12-345 6789.`}</pre>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Progress Description</label>
                             <textarea rows={3} placeholder="Describe the work completed..." className="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea>
                         </div>
-                        <button 
+                        <button
                             onClick={() => completeStep(12)}
                             className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
                         >
@@ -3009,8 +4040,20 @@ Autoflow Service Centre`}</pre>
                         <ArrowLeft className="w-5 h-5" />
                         Back to Workflows
                     </button>
-                    <h1 className="text-3xl font-bold text-gray-900">Create New Workflow</h1>
-                    <p className="text-gray-600 mt-2">Follow the 21-step process to create a complete workflow</p>
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900">Create New Workflow</h1>
+                            <p className="text-gray-600 mt-2">Follow the 21-step process to create a complete workflow</p>
+                        </div>
+                        {!isQ2Active && (
+                            <button
+                                onClick={() => setIsQ2Active(true)}
+                                className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm whitespace-nowrap mt-1"
+                            >
+                                <Plus className="w-4 h-4" /> 2nd Quotation
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Production-Level UI Preview Banner */}
@@ -3020,6 +4063,81 @@ Autoflow Service Centre`}</pre>
                         Click on any step below to see the ACTUAL production interface with forms, buttons, checkboxes, and all interactive elements that users will see and use.
                     </p>
                 </div>
+
+                {/* 2nd Quotation Panel */}
+                {isQ2Active && (
+                    <div className="mb-6 space-y-4">
+                        {/* Q2 Section Header */}
+                        <div className="bg-white border border-gray-200 rounded-lg shadow-sm px-6 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-full uppercase tracking-wide">2nd Quotation</span>
+                                <span className="text-sm text-gray-500">Workflow ID:</span>
+                                <span className="font-mono text-sm font-semibold text-gray-800">{Q2_WORKFLOW_CODE}</span>
+                            </div>
+                            <button
+                                onClick={cancelQ2}
+                                className="flex items-center gap-2 text-sm text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 px-4 py-2 rounded-lg transition-colors"
+                            >
+                                <X className="w-4 h-4" /> Cancel 2nd Quotation
+                            </button>
+                        </div>
+
+                        {/* Q2 Steps 7–13 */}
+                        {DETAILED_WORKFLOW_STEPS.filter(s => s.number >= 7 && s.number <= 13).map((step) => {
+                            const isDone = !!q2StepCompletion[step.number];
+                            return (
+                                <div key={step.number} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-white">
+                                    <button
+                                        onClick={() => setQ2ExpandedStep(q2ExpandedStep === step.number ? null : step.number)}
+                                        className="w-full px-6 py-4 bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-between"
+                                    >
+                                        <div className="flex items-center gap-4 flex-1">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
+                                                isDone ? 'bg-green-600' : 'bg-indigo-600'
+                                            }`}>
+                                                {step.number}
+                                            </div>
+                                            <div className="text-left flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="font-semibold text-gray-900">{step.name}</h4>
+                                                    <span className="text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">Q2</span>
+                                                </div>
+                                                <p className="text-sm text-gray-600">{step.description}</p>
+                                            </div>
+                                            {isDone && (
+                                                <span className="text-sm font-medium text-green-600 flex items-center gap-1">
+                                                    <span className="text-xl">✓</span> Completed
+                                                </span>
+                                            )}
+                                        </div>
+                                        {q2ExpandedStep === step.number
+                                            ? <ChevronUp className="w-5 h-5 text-gray-500 ml-2" />
+                                            : <ChevronDown className="w-5 h-5 text-gray-500 ml-2" />}
+                                    </button>
+
+                                    {q2ExpandedStep === step.number && (
+                                        <div className="px-6 py-6 bg-white space-y-6 border-t-2 border-indigo-100">
+                                            <div>
+                                                <h5 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">Authorized Roles</h5>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {step.roles.map((role, idx) => (
+                                                        <span key={idx} className={`px-3 py-1 rounded-full text-sm font-medium border ${getRoleBadgeColor(role)}`}>
+                                                            {getRoleLabel(role)}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h5 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Production Interface</h5>
+                                                {getQ2StepUI(step.number)}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
 
                 {/* Steps List */}
                 <div className="space-y-4">

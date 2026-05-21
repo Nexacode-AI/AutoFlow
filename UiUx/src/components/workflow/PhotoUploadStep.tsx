@@ -60,10 +60,6 @@ export default function PhotoUploadStep({
   };
 
   const handleComplete = () => {
-    if (stepPhotos.length === 0) {
-      alert('Please upload at least one photo before completing this step');
-      return;
-    }
     onComplete();
   };
 
