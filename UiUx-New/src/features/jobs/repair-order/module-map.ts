@@ -9,10 +9,10 @@ export const stepsByModule = (key: ModuleKey) => STEPS.filter(s => {
     'vehicle':       [4],
     'communication': [3],
     'diagnosis':     [6, 7],
-    'estimate':      [8, 9, 11],
-    'authorization': [10],
-    'repair':        [12, 13, 14, 15, 16],
-    'close-out':     [17, 18, 19],
+    'estimate':      [8, 9],
+    'authorization': [10, 11],
+    'repair':        [12, 13, 14, 15],
+    'close-out':     [16, 17, 18, 19, 20],
   };
   return map[key].includes(s.number);
 });

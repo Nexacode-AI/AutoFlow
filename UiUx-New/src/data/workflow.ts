@@ -12,27 +12,42 @@ export interface Step {
   estMinutes: number;
 }
 
+export type Role = 'superadmin' | 'admin' | 'management' | 'sa' | 'bay';
+
+export const ROLE_LABEL: Record<Role, string> = {
+  superadmin: 'Super Admin',
+  admin:      'Admin',
+  management: 'Management',
+  sa:         'Service Advisor',
+  bay:        'Bay Team',
+};
+
+/* superadmin can act on every step — prepended to each role list */
 export const STEPS: Step[] = [
-  { number: 1,  name: 'Create Workflow',           description: 'Plate number entry, generate workflow code',     roles: ['admin', 'sa', 'bay'],  estMinutes: 5  },
-  { number: 2,  name: 'Inspection Sheet',          description: 'Receive complaints, get approval',                roles: ['bay'],                  estMinutes: 10 },
-  { number: 3,  name: 'WhatsApp Group',            description: 'Create communication channel with customer',      roles: ['sa'],                   estMinutes: 5  },
-  { number: 4,  name: 'Vehicle Photos',            description: 'Photograph car body and chassis number',          roles: ['bay'],                  estMinutes: 10 },
-  { number: 5,  name: 'Update Customer Details',   description: 'Enter customer information',                      roles: ['admin', 'sa'],          estMinutes: 5  },
-  { number: 6,  name: 'Troubleshooting',           description: 'Diagnose issues, document findings',              roles: ['bay'],                  estMinutes: 30 },
-  { number: 7,  name: 'Spare Parts Needed',        description: 'List required parts and quantities',              roles: ['bay'],                  estMinutes: 15 },
-  { number: 8,  name: 'Spare Part Price',          description: 'Get supplier prices and availability',            roles: ['admin', 'management'],  estMinutes: 30 },
-  { number: 9,  name: 'Mark Up',                   description: 'Calculate pricing with 60% margin',               roles: ['admin', 'management'],  estMinutes: 10 },
-  { number: 10, name: 'Spare Part Confirmation',   description: 'Customer confirms quotation',                     roles: ['sa'],                   estMinutes: 30 },
-  { number: 11, name: 'Quotation',                 description: 'Generate PDF quotation',                          roles: ['admin'],                estMinutes: 10 },
-  { number: 12, name: 'Spare Part Order',          description: 'Place orders with selected suppliers',            roles: ['admin'],                estMinutes: 15 },
-  { number: 13, name: 'Spare Parts Received',      description: 'Confirm parts received in workshop',              roles: ['bay'],                  estMinutes: 10 },
-  { number: 14, name: 'Work Progress Photos',      description: 'Photograph repair progress',                      roles: ['bay'],                  estMinutes: 10 },
-  { number: 15, name: 'Work Complete',             description: 'Mark all repair work as completed',               roles: ['bay'],                  estMinutes: 5  },
-  { number: 16, name: 'Quality Control',           description: 'QC inspection and sign-off',                      roles: ['management'],           estMinutes: 15 },
-  { number: 17, name: 'Car Wash',                  description: 'Final wash and detailing',                        roles: ['bay'],                  estMinutes: 20 },
-  { number: 18, name: 'Send Receipt',              description: 'Generate and send invoice to customer',           roles: ['admin'],                estMinutes: 5  },
-  { number: 19, name: 'Receive Payment',           description: 'Record customer payment',                         roles: ['admin'],                estMinutes: 10 },
+  { number: 1,  name: 'Create Workflow',           description: 'Plate number entry, generate workflow code',     roles: ['superadmin', 'admin', 'sa', 'bay'], estMinutes: 5  },
+  { number: 2,  name: 'Inspection Sheet',          description: 'Receive complaints, get approval',                roles: ['superadmin', 'bay'],                estMinutes: 10 },
+  { number: 3,  name: 'WhatsApp Group',            description: 'Create communication channel with customer',      roles: ['superadmin', 'sa'],                 estMinutes: 5  },
+  { number: 4,  name: 'Vehicle Photos',            description: 'Photograph car body and chassis number',          roles: ['superadmin', 'bay'],                estMinutes: 10 },
+  { number: 5,  name: 'Update Customer Details',   description: 'Enter customer information',                      roles: ['superadmin', 'admin', 'sa'],        estMinutes: 5  },
+  { number: 6,  name: 'Troubleshooting',           description: 'Diagnose issues, document findings',              roles: ['superadmin', 'bay'],                estMinutes: 30 },
+  { number: 7,  name: 'Spare Parts Needed',        description: 'List required parts and quantities',              roles: ['superadmin', 'bay'],                estMinutes: 15 },
+  { number: 8,  name: 'Spare Part Price',          description: 'Get supplier prices and availability',            roles: ['superadmin', 'admin', 'management'], estMinutes: 30 },
+  { number: 9,  name: 'Mark Up',                   description: 'Calculate pricing with 60% margin',               roles: ['superadmin', 'admin', 'management'], estMinutes: 10 },
+  { number: 10, name: 'Spare Part Confirmation',   description: 'Customer confirms quotation',                     roles: ['superadmin', 'sa'],                 estMinutes: 30 },
+  { number: 11, name: 'Quotation',                 description: 'Generate PDF quotation',                          roles: ['superadmin', 'admin'],              estMinutes: 10 },
+  { number: 12, name: 'Spare Part Order',          description: 'Place orders with selected suppliers',            roles: ['superadmin', 'admin'],              estMinutes: 15 },
+  { number: 13, name: 'Spare Parts Received',      description: 'Confirm parts received in workshop',              roles: ['superadmin', 'bay'],                estMinutes: 10 },
+  { number: 14, name: 'Work Progress & Complete',  description: 'Document repair progress and mark work complete', roles: ['superadmin', 'bay'],                estMinutes: 15 },
+  { number: 15, name: 'Quality Control',           description: 'QC inspection and sign-off',                      roles: ['superadmin', 'management'],         estMinutes: 15 },
+  { number: 16, name: 'Car Wash',                  description: 'Final wash and detailing',                        roles: ['superadmin', 'bay'],                estMinutes: 20 },
+  { number: 17, name: 'Send Receipt',              description: 'Generate and send invoice to customer',           roles: ['superadmin', 'admin'],              estMinutes: 5  },
+  { number: 18, name: 'Receive Payment',           description: 'Record customer payment',                         roles: ['superadmin', 'admin'],              estMinutes: 10 },
+  { number: 19, name: 'Car Delivery',              description: 'Vehicle handover to customer',                    roles: ['superadmin', 'admin', 'sa'],        estMinutes: 20 },
+  { number: 20, name: 'Customer Feedback',         description: 'Customer satisfaction rating',                    roles: ['superadmin', 'sa'],                 estMinutes: 5  },
 ];
+
+export const stepRoles = (n: number): Role[] =>
+  (STEPS.find(s => s.number === n)?.roles ?? []) as Role[];
 
 /* ─── 8 modules — the new UX surface ─── */
 
@@ -53,10 +68,10 @@ export const MODULES: Module[] = [
   { key: 'vehicle',       name: 'Vehicle',            description: 'Body photos & chassis verification',steps: [4],                icon: 'Car'            },
   { key: 'communication', name: 'Communication',      description: 'WhatsApp group & customer comms',   steps: [3],                icon: 'MessageSquare'  },
   { key: 'diagnosis',     name: 'Diagnosis',          description: 'Troubleshooting & parts needed',    steps: [6, 7],             icon: 'Search'         },
-  { key: 'estimate',      name: 'Estimate',           description: 'Pricing, markup, quotation PDF',    steps: [8, 9, 11],         icon: 'Calculator'     },
-  { key: 'authorization', name: 'Authorization',      description: 'Customer approval flow',            steps: [10],               icon: 'BadgeCheck'     },
-  { key: 'repair',        name: 'Parts & Repair',     description: 'Order, fit, document, QC',          steps: [12, 13, 14, 15, 16], icon: 'Wrench'       },
-  { key: 'close-out',     name: 'Close-out',          description: 'Wash, invoice, payment',            steps: [17, 18, 19],       icon: 'CheckCheck'     },
+  { key: 'estimate',      name: 'Estimate',           description: 'Supplier pricing & markup',         steps: [8, 9],             icon: 'Calculator'     },
+  { key: 'authorization', name: 'Authorization',      description: 'Customer confirms, quotation PDF',  steps: [10, 11],           icon: 'BadgeCheck'     },
+  { key: 'repair',        name: 'Parts & Repair',     description: 'Order, fit, document, QC',          steps: [12, 13, 14, 15], icon: 'Wrench'         },
+  { key: 'close-out',     name: 'Close-out',          description: 'Wash, invoice, payment, delivery',  steps: [16, 17, 18, 19, 20], icon: 'CheckCheck' },
 ];
 
 /* ─── Status pipeline — derived from module completion ─── */

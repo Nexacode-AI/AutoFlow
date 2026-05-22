@@ -149,7 +149,7 @@ function ListView({ jobs }: { jobs: typeof JOBS }) {
               <td className="px-3 h-10 text-[var(--color-text-primary)]">{j.customerName}</td>
               <td className="px-3 h-10 text-[var(--color-text-secondary)]">{j.carModel}</td>
               <td className="px-3 h-10"><Badge tone={STATUS_META[j.status].tone as any} dot>{STATUS_META[j.status].label}</Badge></td>
-              <td className="px-3 h-10 tabular text-[var(--color-text-tertiary)]">{j.currentStep}/19</td>
+              <td className="px-3 h-10 tabular text-[var(--color-text-tertiary)]">{j.currentStep}/20</td>
               <td className="px-3 h-10 tabular text-[var(--color-text-primary)]">{j.estimatedTotal ? fmtMoney(j.estimatedTotal) : '—'}</td>
               <td className="px-3 h-10 text-[var(--color-text-tertiary)]">{fmtRelative(j.updatedAt)}</td>
               <td className="px-3 h-10 text-right pr-4">

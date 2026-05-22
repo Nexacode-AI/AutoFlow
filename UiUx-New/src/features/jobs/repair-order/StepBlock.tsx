@@ -1,7 +1,8 @@
 import { type ReactNode } from 'react';
-import { Check, Clock } from 'lucide-react';
+import { Check, Clock, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { Badge } from '@/design/primitives/Badge';
+import { stepRoles, ROLE_LABEL } from '@/data/workflow';
 
 interface Props {
   number: number;
@@ -14,6 +15,8 @@ interface Props {
 
 /** A single step card inside a module — premium hairline frame, no shadows */
 export function StepBlock({ number, name, description, status = 'active', timeLimit, children }: Props) {
+  const roles = stepRoles(number);
+
   return (
     <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] overflow-hidden">
       <header className="flex items-start gap-3 px-4 py-3 border-b border-[var(--color-border)]">
@@ -33,6 +36,21 @@ export function StepBlock({ number, name, description, status = 'active', timeLi
             <Badge tone="neutral" className="font-mono">Step {number}</Badge>
           </div>
           {description && <p className="text-[12px] text-[var(--color-text-tertiary)] mt-0.5">{description}</p>}
+
+          {/* Authorized roles — who may action this step */}
+          {roles.length > 0 && (
+            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+              <ShieldCheck className="w-3 h-3 text-[var(--color-text-tertiary)]" />
+              <span className="text-[10px] font-medium uppercase tracking-[0.04em] text-[var(--color-text-tertiary)]">
+                Authorized
+              </span>
+              {roles.map(r => (
+                <Badge key={r} tone={r === 'superadmin' ? 'accent' : 'neutral'}>
+                  {ROLE_LABEL[r]}
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
         {timeLimit && (
           <div className="flex items-center gap-1 text-[11px] text-[var(--color-text-tertiary)] tabular shrink-0">

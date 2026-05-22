@@ -72,36 +72,101 @@ export const WORKFLOW_CODE = ACTIVE_JOB.code;
 export const PLATE_NUMBER  = ACTIVE_JOB.plate;
 export const CHASSIS_NUMBER = 'MH1234567890';
 
-/* ─── Parts catalog (verbatim from UiUx) ─── */
+/* ─── Part types ───────────────────────────────────────────────────────────
+   Every part is purchasable as one of two grades. This ORI/OM split — and the
+   warranty that comes with each — is the core concept of the Parts catalog.
+   ─────────────────────────────────────────────────────────────────────────── */
 
-export const PARTS_CATALOG: Record<string, { id: string; name: string; price: number }[]> = {
+export type PartType = 'ORI' | 'OM';
+
+export const PART_TYPE_META: Record<PartType, {
+  label: string; full: string; warranty: string; warrantyMonths: number; tone: 'accent' | 'warning';
+}> = {
+  ORI: { label: 'ORI', full: 'Original',           warranty: '1-year warranty',  warrantyMonths: 12, tone: 'accent'  },
+  OM:  { label: 'OM',  full: 'Other Manufacturer', warranty: '6-month warranty', warrantyMonths: 6,  tone: 'warning' },
+};
+
+/* ─── Parts catalog ───────────────────────────────────────────────────────
+   Each catalog part carries both an ORI price (genuine, 1-yr) and an OM price
+   (aftermarket, 6-mo). OM runs ~60-75% of ORI.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+export interface CatalogPart {
+  id: string;
+  name: string;
+  oriPrice: number;
+  omPrice: number;
+}
+
+export const PARTS_CATALOG: Record<string, CatalogPart[]> = {
   'Brake System': [
-    { id: 'BP-F-001', name: 'Brake Pads (Front)', price: 150 },
-    { id: 'BP-R-002', name: 'Brake Pads (Rear)',  price: 130 },
-    { id: 'BD-F-003', name: 'Brake Disc (Front)', price: 280 },
-    { id: 'BC-004',   name: 'Brake Caliper',      price: 320 },
+    { id: 'BP-F-001', name: 'Brake Pads (Front)', oriPrice: 150, omPrice: 105 },
+    { id: 'BP-R-002', name: 'Brake Pads (Rear)',  oriPrice: 130, omPrice: 92  },
+    { id: 'BD-F-003', name: 'Brake Disc (Front)', oriPrice: 280, omPrice: 190 },
+    { id: 'BC-004',   name: 'Brake Caliper',      oriPrice: 320, omPrice: 225 },
   ],
   'Engine Parts': [
-    { id: 'EO-5W30-4L', name: 'Engine Oil 5W-30 (4L)', price: 85 },
-    { id: 'OF-001',     name: 'Oil Filter',             price: 25 },
-    { id: 'AF-002',     name: 'Air Filter',             price: 45 },
-    { id: 'SP-003',     name: 'Spark Plugs (set of 4)', price: 120 },
+    { id: 'EO-5W30-4L', name: 'Engine Oil 5W-30 (4L)', oriPrice: 85,  omPrice: 62  },
+    { id: 'OF-001',     name: 'Oil Filter',             oriPrice: 25,  omPrice: 16  },
+    { id: 'AF-002',     name: 'Air Filter',             oriPrice: 45,  omPrice: 30  },
+    { id: 'SP-003',     name: 'Spark Plugs (set of 4)', oriPrice: 120, omPrice: 84  },
   ],
   'Electrical': [
-    { id: 'BAT-001', name: 'Car Battery (55Ah)',  price: 350 },
-    { id: 'ALT-002', name: 'Alternator',          price: 480 },
-    { id: 'FUS-003', name: 'Fuse Box Set',        price: 60  },
+    { id: 'BAT-001', name: 'Car Battery (55Ah)',  oriPrice: 350, omPrice: 245 },
+    { id: 'ALT-002', name: 'Alternator',          oriPrice: 480, omPrice: 330 },
+    { id: 'FUS-003', name: 'Fuse Box Set',        oriPrice: 60,  omPrice: 40  },
   ],
   'AC System': [
-    { id: 'ACF-001', name: 'AC Filter / Cabin Filter', price: 55  },
-    { id: 'ACG-002', name: 'AC Gas Refill (R134a)',    price: 120 },
-    { id: 'ACP-003', name: 'AC Compressor',            price: 950 },
+    { id: 'ACF-001', name: 'AC Filter / Cabin Filter', oriPrice: 55,  omPrice: 36  },
+    { id: 'ACG-002', name: 'AC Gas Refill (R134a)',    oriPrice: 120, omPrice: 88  },
+    { id: 'ACP-003', name: 'AC Compressor',            oriPrice: 950, omPrice: 640 },
   ],
   'Suspension': [
-    { id: 'SA-001', name: 'Shock Absorber (Front pair)', price: 420 },
-    { id: 'CS-002', name: 'Coil Spring (Front)',         price: 180 },
-    { id: 'BJ-003', name: 'Ball Joint',                  price: 95  },
+    { id: 'SA-001', name: 'Shock Absorber (Front pair)', oriPrice: 420, omPrice: 290 },
+    { id: 'CS-002', name: 'Coil Spring (Front)',         oriPrice: 180, omPrice: 125 },
+    { id: 'BJ-003', name: 'Ball Joint',                  oriPrice: 95,  omPrice: 64  },
   ],
+};
+
+export const ALL_PARTS = Object.entries(PARTS_CATALOG).flatMap(([category, items]) =>
+  items.map(p => ({ ...p, category })),
+);
+
+/* ─── Step 12 — Multi-Supplier Pricing Tool seed data (verbatim from UiUx) ─── */
+
+export const SPO12_GRADES = ['ORI', 'OEM', 'USED', 'LABOUR'] as const;
+export type Spo12Grade = (typeof SPO12_GRADES)[number];
+
+export const SPO12_PARTS: { id: string; name: string }[] = [
+  { id: 'crank-sensor',  name: 'Crank Sensor' },
+  { id: 'ignition-coil', name: 'Ignition Coil' },
+  { id: 'agm-battery',   name: 'AGM Battery 92AH' },
+];
+
+/* key = `${partId}_${grade}_${supplierId}` */
+export const SPO12_INIT_COSTS: Record<string, string> = {
+  'crank-sensor_ORI_suan-huat': '380', 'crank-sensor_ORI_stuttgart': '400', 'crank-sensor_ORI_bavaria': '420',
+  'crank-sensor_OEM_suan-huat': '130', 'crank-sensor_OEM_stuttgart': '150', 'crank-sensor_OEM_bavaria': '160',
+  'crank-sensor_LABOUR_suan-huat': '100', 'crank-sensor_LABOUR_stuttgart': '120', 'crank-sensor_LABOUR_bavaria': '110',
+  'ignition-coil_ORI_suan-huat': '180', 'ignition-coil_ORI_stuttgart': '170', 'ignition-coil_ORI_bavaria': '195',
+  'ignition-coil_OEM_suan-huat': '70',  'ignition-coil_OEM_stuttgart': '80',  'ignition-coil_OEM_bavaria': '75',
+  'ignition-coil_USED_suan-huat': '40',
+  'ignition-coil_LABOUR_suan-huat': '80', 'ignition-coil_LABOUR_stuttgart': '90', 'ignition-coil_LABOUR_bavaria': '85',
+  'agm-battery_ORI_suan-huat': '1250', 'agm-battery_ORI_stuttgart': '1300', 'agm-battery_ORI_bavaria': '1280',
+  'agm-battery_LABOUR_suan-huat': '50', 'agm-battery_LABOUR_stuttgart': '60', 'agm-battery_LABOUR_bavaria': '55',
+};
+
+/* key = `${partId}_${grade}` → supplierId chosen to charge */
+export const SPO12_INIT_CHARGE: Record<string, string> = {
+  'crank-sensor_ORI': 'suan-huat',  'crank-sensor_LABOUR': 'suan-huat',
+  'ignition-coil_ORI': 'stuttgart', 'ignition-coil_LABOUR': 'suan-huat',
+  'agm-battery_ORI': 'suan-huat',   'agm-battery_LABOUR': 'suan-huat',
+};
+
+export const SPO12_INIT_CHARGE_AMT: Record<string, string> = {
+  'crank-sensor_ORI': '589',  'crank-sensor_LABOUR': '100',
+  'ignition-coil_ORI': '620', 'ignition-coil_LABOUR': '80',
+  'agm-battery_ORI': '1938',  'agm-battery_LABOUR': '50',
 };
 
 /* ─── Suppliers (verbatim) ─── */
