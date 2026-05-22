@@ -21,7 +21,6 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
-    Enum as SAEnum,
     ForeignKey,
     Integer,
     Numeric,
@@ -30,10 +29,14 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy import (
+    Enum as SAEnum,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.base import (
+    Base,
     MediaType,
     NotificationTrigger,
     NotificationType,
@@ -47,8 +50,6 @@ from app.infrastructure.base import (
     UserRole,
     WorkflowStatus,
 )
-from app.infrastructure.base import Base
-
 
 # ──────────────────────────────────────────────
 # helpers
@@ -79,7 +80,7 @@ class Role(Base):
     role_name: Mapped[UserRole] = mapped_column(
         SAEnum(UserRole, name="user_role"), unique=True
     )
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # relationships
     users: Mapped[list["User"]] = relationship("User", back_populates="role")
@@ -104,8 +105,8 @@ class User(Base):
         UUID(as_uuid=False), primary_key=True, default=_uuid
     )
     name: Mapped[str] = mapped_column(String(100))
-    email: Mapped[Optional[str]] = mapped_column(String(150), unique=True, nullable=True)
-    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(150), unique=True, nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     password_hash: Mapped[str] = mapped_column(Text)
     role_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("roles.role_id")
@@ -134,9 +135,9 @@ class Customer(Base):
         UUID(as_uuid=False), primary_key=True, default=_uuid
     )
     name: Mapped[str] = mapped_column(String(100))
-    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    email: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
-    address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    address: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
     # relationships
@@ -171,7 +172,7 @@ class WorkflowStepDefinition(Base):
     # Minutes to wait before triggering next-step notification (0 = immediate)
     notification_delay_min: Mapped[int] = mapped_column(Integer, default=0)
     is_auto_tick: Mapped[bool] = mapped_column(Boolean, default=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # relationships
     step_instances: Mapped[list["WorkflowStep"]] = relationship(
@@ -201,14 +202,14 @@ class Workflow(Base):
     # Short human-readable reference used in messages & Google Forms
     unique_ref: Mapped[str] = mapped_column(String(20), unique=True)
     plate_number: Mapped[str] = mapped_column(String(20))
-    customer_id: Mapped[Optional[str]] = mapped_column(
+    customer_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("customers.customer_id"), nullable=True
     )
-    car_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    mileage: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    chassis_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    car_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    mileage: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    chassis_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # Points to the currently active step
-    current_step_id: Mapped[Optional[str]] = mapped_column(
+    current_step_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("workflow_steps.step_id"),
         nullable=True,
@@ -217,13 +218,13 @@ class Workflow(Base):
         SAEnum(WorkflowStatus, name="workflow_status"),
         default=WorkflowStatus.CREATED,
     )
-    whatsapp_group_link: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    whatsapp_group_link: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.user_id")
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
-    closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    pdf_snapshot_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    pdf_snapshot_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # relationships
@@ -301,11 +302,11 @@ class WorkflowStep(Base):
         SAEnum(StepStatus, name="step_status"),
         default=StepStatus.PENDING,
     )
-    ticked_by: Mapped[Optional[str]] = mapped_column(
+    ticked_by: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.user_id"), nullable=True
     )
-    ticked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    ticked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # relationships
     workflow: Mapped["Workflow"] = relationship(
@@ -347,12 +348,12 @@ class InspectionSheet(Base):
         ForeignKey("workflows.workflow_id"),
         unique=True,
     )
-    complaint_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    complaint_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     customer_approved: Mapped[bool] = mapped_column(Boolean, default=False)
-    approved_by: Mapped[Optional[str]] = mapped_column(
+    approved_by: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.user_id"), nullable=True
     )
-    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
     # relationships
@@ -379,7 +380,7 @@ class PartCategory(Base):
         UUID(as_uuid=False), primary_key=True, default=_uuid
     )
     category_name: Mapped[str] = mapped_column(String(100), unique=True)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # relationships
@@ -407,8 +408,8 @@ class Part(Base):
         UUID(as_uuid=False), ForeignKey("part_categories.category_id")
     )
     part_name: Mapped[str] = mapped_column(String(150))
-    part_code: Mapped[Optional[str]] = mapped_column(String(50), unique=True, nullable=True)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    part_code: Mapped[str | None] = mapped_column(String(50), unique=True, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_by: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.user_id")
@@ -453,7 +454,7 @@ class WorkflowPartNeeded(Base):
         UUID(as_uuid=False), ForeignKey("parts.part_id")
     )
     quantity: Mapped[int] = mapped_column(Integer, default=1)
-    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     selected_by: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.user_id")
     )
@@ -467,7 +468,10 @@ class WorkflowPartNeeded(Base):
     selector: Mapped["User"] = relationship("User", foreign_keys=[selected_by])
 
     def __repr__(self) -> str:
-        return f"<WorkflowPartNeeded workflow={self.workflow_id} part={self.part_id} qty={self.quantity}>"
+        return (
+            f"<WorkflowPartNeeded workflow={self.workflow_id} "
+            f"part={self.part_id} qty={self.quantity}>"
+        )
 
 
 # ──────────────────────────────────────────────
@@ -482,9 +486,9 @@ class Supplier(Base):
         UUID(as_uuid=False), primary_key=True, default=_uuid
     )
     supplier_name: Mapped[str] = mapped_column(String(150))
-    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    whatsapp_number: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    email: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    whatsapp_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(150), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # relationships
@@ -521,7 +525,7 @@ class SupplierEnquiry(Base):
         UUID(as_uuid=False), ForeignKey("suppliers.supplier_id")
     )
     message_text: Mapped[str] = mapped_column(Text)
-    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_by: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.user_id")
     )
@@ -607,20 +611,20 @@ class Quotation(Base):
         ForeignKey("workflows.workflow_id"),
         unique=True,
     )
-    google_form_link: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    pdf_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    total_cost: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
-    total_selling: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
-    profit_margin_pct: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2), nullable=True)
+    google_form_link: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pdf_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    total_cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    total_selling: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    profit_margin_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     margin_override: Mapped[bool] = mapped_column(Boolean, default=False)
-    override_by: Mapped[Optional[str]] = mapped_column(
+    override_by: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.user_id"), nullable=True
     )
     status: Mapped[QuotationStatus] = mapped_column(
         SAEnum(QuotationStatus, name="quotation_status"),
         default=QuotationStatus.DRAFT,
     )
-    sent_to_phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    sent_to_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_by: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.user_id")
     )
@@ -643,7 +647,10 @@ class Quotation(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Quotation workflow={self.workflow_id} status={self.status} margin={self.profit_margin_pct}%>"
+        return (
+            f"<Quotation workflow={self.workflow_id} "
+            f"status={self.status} margin={self.profit_margin_pct}%>"
+        )
 
 
 # ──────────────────────────────────────────────
@@ -664,13 +671,13 @@ class QuotationLineItem(Base):
     quotation_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("quotations.quotation_id")
     )
-    part_id: Mapped[Optional[str]] = mapped_column(
+    part_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("parts.part_id"), nullable=True
     )
-    description: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    description: Mapped[str | None] = mapped_column(String(200), nullable=True)
     quantity: Mapped[int] = mapped_column(Integer, default=1)
-    cost_price: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
-    selling_price: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+    cost_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    selling_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     customer_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # relationships
@@ -685,7 +692,10 @@ class QuotationLineItem(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<QuotationLineItem {self.description} qty={self.quantity} confirmed={self.customer_confirmed}>"
+        return (
+            f"<QuotationLineItem {self.description} "
+            f"qty={self.quantity} confirmed={self.customer_confirmed}>"
+        )
 
 
 # ──────────────────────────────────────────────
@@ -709,7 +719,7 @@ class CustomerConfirmation(Base):
         UUID(as_uuid=False), ForeignKey("quotations.quotation_id")
     )
     # Raw Google Form response stored as JSON for auditability
-    form_response_raw: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    form_response_raw: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     received_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
     # relationships
@@ -742,13 +752,13 @@ class PartOrder(Base):
     supplier_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("suppliers.supplier_id")
     )
-    order_message_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    order_message_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     ordered_by: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.user_id")
     )
     ordered_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
-    received_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    received_by: Mapped[Optional[str]] = mapped_column(
+    received_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    received_by: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.user_id"), nullable=True
     )
     status: Mapped[OrderStatus] = mapped_column(
@@ -790,7 +800,7 @@ class MediaUpload(Base):
         UUID(as_uuid=False), ForeignKey("workflow_steps.step_id")
     )
     # Nullable — only set for Step 16 work-progress photos
-    line_item_id: Mapped[Optional[str]] = mapped_column(
+    line_item_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("quotation_line_items.line_item_id"),
         nullable=True,
@@ -836,7 +846,7 @@ class QCRecord(Base):
         UUID(as_uuid=False), ForeignKey("users.user_id")
     )
     result: Mapped[QCResult] = mapped_column(SAEnum(QCResult, name="qc_result"))
-    remarks: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     checked_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
     # relationships
@@ -863,14 +873,14 @@ class Notification(Base):
     notification_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), primary_key=True, default=_uuid
     )
-    workflow_id: Mapped[Optional[str]] = mapped_column(
+    workflow_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("workflows.workflow_id"), nullable=True
     )
-    step_id: Mapped[Optional[str]] = mapped_column(
+    step_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("workflow_steps.step_id"), nullable=True
     )
-    recipient_role: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    recipient_user_id: Mapped[Optional[str]] = mapped_column(
+    recipient_role: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    recipient_user_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.user_id"), nullable=True
     )
     type: Mapped[NotificationType] = mapped_column(
@@ -878,10 +888,10 @@ class Notification(Base):
     )
     message: Mapped[str] = mapped_column(Text)
     scheduled_at: Mapped[datetime] = mapped_column(DateTime)
-    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     snooze_count: Mapped[int] = mapped_column(Integer, default=0)
-    snoozed_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    snoozed_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # relationships
     workflow: Mapped[Optional["Workflow"]] = relationship(
@@ -919,7 +929,7 @@ class Payment(Base):
     payment_method: Mapped[PaymentMethod] = mapped_column(
         SAEnum(PaymentMethod, name="payment_method")
     )
-    receipt_pdf_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    receipt_pdf_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     received_by: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.user_id")
     )
@@ -931,4 +941,7 @@ class Payment(Base):
     receiver: Mapped["User"] = relationship("User", foreign_keys=[received_by])
 
     def __repr__(self) -> str:
-        return f"<Payment workflow={self.workflow_id} amount={self.amount_paid} method={self.payment_method}>"
+        return (
+            f"<Payment workflow={self.workflow_id} "
+            f"amount={self.amount_paid} method={self.payment_method}>"
+        )

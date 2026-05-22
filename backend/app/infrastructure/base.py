@@ -1,5 +1,6 @@
-from sqlalchemy.orm import declarative_base
 import enum
+
+from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
@@ -7,7 +8,7 @@ Base = declarative_base()
 # Users & Roles
 # ──────────────────────────────────────────────
 
-class UserRole(str, enum.Enum):
+class UserRole(enum.StrEnum):
     SUPER_ADMIN = "super_admin"
     ADMIN = "admin"
     BAY = "bay"  # mechanic / service advisor (shared login)
@@ -17,20 +18,20 @@ class UserRole(str, enum.Enum):
 # Workflow Steps
 # ──────────────────────────────────────────────
 
-class TickBy(str, enum.Enum):
+class TickBy(enum.StrEnum):
     ADMIN = "admin"
     BAY = "bay"
     AUTO = "auto"
     NONE = "none"
 
 
-class NotificationTrigger(str, enum.Enum):
+class NotificationTrigger(enum.StrEnum):
     IMMEDIATE = "immediate"
     DELAYED = "delayed"
     NONE = "none"
 
 
-class WorkflowStatus(str, enum.Enum):
+class WorkflowStatus(enum.StrEnum):
     CREATED = "created"
     INSPECTION = "inspection"
     TROUBLESHOOTING = "troubleshooting"
@@ -43,7 +44,7 @@ class WorkflowStatus(str, enum.Enum):
     DELETED = "deleted"
 
 
-class StepStatus(str, enum.Enum):
+class StepStatus(enum.StrEnum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     DONE = "done"
@@ -54,13 +55,13 @@ class StepStatus(str, enum.Enum):
 # Parts & Orders
 # ──────────────────────────────────────────────
 
-class PartAvailability(str, enum.Enum):
+class PartAvailability(enum.StrEnum):
     AVAILABLE = "available"
     ON_ORDER = "on_order"
     UNAVAILABLE = "unavailable"
 
 
-class OrderStatus(str, enum.Enum):
+class OrderStatus(enum.StrEnum):
     ORDERED = "ordered"
     RECEIVED = "received"
 
@@ -69,7 +70,7 @@ class OrderStatus(str, enum.Enum):
 # Quotation
 # ──────────────────────────────────────────────
 
-class QuotationStatus(str, enum.Enum):
+class QuotationStatus(enum.StrEnum):
     DRAFT = "draft"
     SENT = "sent"
     CONFIRMED = "confirmed"
@@ -80,7 +81,7 @@ class QuotationStatus(str, enum.Enum):
 # Media
 # ──────────────────────────────────────────────
 
-class MediaType(str, enum.Enum):
+class MediaType(enum.StrEnum):
     CAR_BODY = "car_body"
     CHASSIS = "chassis"
     AFTER_REMOVAL = "after_removal"
@@ -93,7 +94,7 @@ class MediaType(str, enum.Enum):
 # QC
 # ──────────────────────────────────────────────
 
-class QCResult(str, enum.Enum):
+class QCResult(enum.StrEnum):
     PASS = "pass"
     FAIL = "fail"
 
@@ -102,7 +103,7 @@ class QCResult(str, enum.Enum):
 # Notifications
 # ──────────────────────────────────────────────
 
-class NotificationType(str, enum.Enum):
+class NotificationType(enum.StrEnum):
     STEP_COMPLETE = "step_complete"
     ALARM = "alarm"           # snooze-able (e.g. Step 6 reminder)
     REMINDER = "reminder"     # delayed follow-up (e.g. 15-min after order)
@@ -113,7 +114,7 @@ class NotificationType(str, enum.Enum):
 # Payments
 # ──────────────────────────────────────────────
 
-class PaymentMethod(str, enum.Enum):
+class PaymentMethod(enum.StrEnum):
     CASH = "cash"
     CARD = "card"
     TRANSFER = "transfer"

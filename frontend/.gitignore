@@ -6,3 +6,7 @@ dist
 .env
 .env.*
 !.env.example
+
+# Re-include source dirs wrongly matched by the repo-root Python .gitignore
+!src/lib/
+!src/features/parts/

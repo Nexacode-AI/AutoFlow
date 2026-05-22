@@ -1,15 +1,9 @@
-"""AutoFlow backend — FastAPI application entry point."""
+"""Convenience entry point — re-exports the real app from app.main.
 
-from fastapi import FastAPI
+Both of these work:
+    uvicorn main:app --reload
+    uvicorn app.main:app --reload
+"""
+from app.main import app
 
-app = FastAPI(
-    title="AutoFlow",
-    description="Complete car service workflow management",
-    version="0.1.0",
-)
-
-
-@app.get("/health", tags=["health"])
-async def health_check():
-    """Liveness probe."""
-    return {"status": "ok"}
+__all__ = ["app"]
