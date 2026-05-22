@@ -10,11 +10,10 @@ from alembic import context
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from app.infrastructure.base import Base
-from app.infrastructure.config import settings
-
 # Importing the models package registers every table on Base.metadata.
 import app.infrastructure.models  # noqa: F401
+from app.infrastructure.base import Base
+from app.infrastructure.config import settings
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.POSTGRES_DATABASE_URL)

@@ -1,15 +1,14 @@
 """Async SQLAlchemy session factory and engine configuration."""
 import logging
-from sqlalchemy.ext.asyncio import (
-    create_async_engine,
-    async_sessionmaker,
-    AsyncSession
-)
-from typing import AsyncGenerator
-from .config import database_settings
-from .base import Base
+from collections.abc import AsyncGenerator
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
 # Importing the models package registers every table on Base.metadata.
 from app.infrastructure import models  # noqa: F401
+
+from .base import Base
+from .config import database_settings
 
 logger = logging.getLogger(__name__)
 
