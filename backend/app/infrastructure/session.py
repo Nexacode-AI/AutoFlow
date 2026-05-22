@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import (
 from typing import AsyncGenerator
 from .config import database_settings
 from .base import Base
+# Importing the models package registers every table on Base.metadata.
+from app.infrastructure import models  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
