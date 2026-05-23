@@ -1,10 +1,20 @@
-import { useNavigate } from 'react-router-dom';
-import { Car, ArrowRight, Shield, Zap, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { Car, ArrowRight, Shield, Zap, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/design/primitives/Button';
 import { Field, Input } from '@/design/primitives/Input';
+import { useAuthStore } from '@/lib/auth/useAuthStore';
 
 export function Login() {
   const nav = useNavigate();
+  const location = useLocation();
+  const { login, isLoading, error, clearError } = useAuthStore();
+
+  const [email, setEmail] = useState('admin@autoflow.local');
+  const [password, setPassword] = useState('');
+
+  // Get the page user was trying to access before redirect
+  const from = (location.state as any)?.from?.pathname || '/';
 
   return (
     <div className="min-h-screen flex">
@@ -27,24 +37,61 @@ export function Login() {
             </div>
 
             <form
-              onSubmit={(e) => { e.preventDefault(); nav('/'); }}
+              onSubmit={async (e) => {
+                e.preventDefault();
+                clearError();
+                try {
+                  await login(email, password);
+                  nav(from, { replace: true });
+                } catch {
+                  // Error is already set in store
+                }
+              }}
               className="space-y-3"
             >
+              {error && (
+                <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                  <p className="text-[13px] text-red-800">{error}</p>
+                </div>
+              )}
+
               <Field label="Email" required>
-                <Input type="email" defaultValue="sarah@premiumauto.com.my" />
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                  autoComplete="email"
+                />
               </Field>
               <Field label="Password" required>
-                <Input type="password" defaultValue="••••••••••" />
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  autoComplete="current-password"
+                />
               </Field>
               <div className="flex items-center justify-between text-[12px]">
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input type="checkbox" className="w-3.5 h-3.5 accent-[var(--color-accent)]" />
                   <span className="text-[var(--color-text-secondary)]">Remember me</span>
                 </label>
-                <a href="#" className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] font-medium">Forgot password?</a>
+                <Link to="/forgot-password" className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] font-medium">
+                  Forgot password?
+                </Link>
               </div>
-              <Button type="submit" variant="primary" size="lg" className="w-full" trailing={<ArrowRight className="w-3.5 h-3.5" />}>
-                Sign in
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                className="w-full"
+                disabled={isLoading}
+                trailing={<ArrowRight className="w-3.5 h-3.5" />}
+              >
+                {isLoading ? 'Signing in...' : 'Sign in'}
               </Button>
             </form>
 
