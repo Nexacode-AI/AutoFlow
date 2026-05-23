@@ -18,7 +18,13 @@ from sqlalchemy import select
 
 from app.core.security import hash_password
 from app.infrastructure.base import NotificationTrigger, PartGrade, TickBy, UserRole
-from app.infrastructure.models.models import PartCategory, PartsCatalogue, Role, User, WorkflowStepDefinition
+from app.infrastructure.models.models import (
+    PartCategory,
+    PartsCatalogue,
+    Role,
+    User,
+    WorkflowStepDefinition,
+)
 from app.infrastructure.session import AsyncSessionLocal, init_db
 
 logger = logging.getLogger(__name__)

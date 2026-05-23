@@ -261,7 +261,10 @@ async def delete_category(category_id: str, db: DbSession, _=_admin) -> None:
     if linked and linked > 0:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Cannot delete: {linked} part(s) are linked to this category. Delete or reassign them first.",
+            detail=(
+                f"Cannot delete: {linked} part(s) are linked to this category. "
+                "Delete or reassign them first."
+            ),
         )
 
     cat.is_active = False

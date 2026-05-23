@@ -463,7 +463,7 @@ class PartsCatalogue(Base):
     )
     warranty_months: Mapped[int] = mapped_column(Integer, default=12)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
     # relationships
