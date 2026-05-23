@@ -56,3 +56,11 @@ def decode_access_token(token: str) -> dict[str, Any] | None:
         )
     except JWTError:
         return None
+
+
+def get_token_expiry(token: str) -> datetime | None:
+    """Extract the expiration timestamp from a JWT token."""
+    claims = decode_access_token(token)
+    if claims and "exp" in claims:
+        return datetime.fromtimestamp(claims["exp"], UTC)
+    return None
