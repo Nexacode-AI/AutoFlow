@@ -88,7 +88,7 @@ async def admin_dashboard(user: RequireAdmin, db: DbSession):
 
     total_users = await db.scalar(select(func.count(User.user_id)))
     active_users = await db.scalar(
-        select(func.count(User.user_id)).where(User.is_active == True)
+        select(func.count(User.user_id)).where(User.is_active)
     )
 
     # Get the current user's role (eagerly loaded)

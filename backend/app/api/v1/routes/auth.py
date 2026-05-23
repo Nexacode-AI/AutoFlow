@@ -137,9 +137,9 @@ async def forgot_password(request: ForgotPasswordRequest, db: DbSession):
 
         # TODO: Send email with reset link
         # For now, log it (dev mode)
-        reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
+        reset_link = f"http://localhost:5174/reset-password?token={reset_token}"
         print(f"\n{'='*60}")
-        print(f"PASSWORD RESET REQUESTED")
+        print("PASSWORD RESET REQUESTED")
         print(f"{'='*60}")
         print(f"User: {user.email}")
         print(f"Reset Link: {reset_link}")
