@@ -25,12 +25,6 @@ async def list_users(user: RequireAdmin, db: DbSession):
     result = await db.execute(select(User).options(selectinload(User.role)))
     users = result.scalars().all()
 
-    # Get the current user's role (eagerly loaded)
-    current_user = await db.execute(
-        select(User).where(User.user_id == user.user_id).options(selectinload(User.role))
-    )
-    current_user_obj = current_user.scalar_one()
-
     return {
         "users": [
             {
@@ -43,7 +37,7 @@ async def list_users(user: RequireAdmin, db: DbSession):
         ],
         "total": len(users),
         "accessed_by": user.name,
-        "accessed_by_role": current_user_obj.role.role_name.value,
+        "accessed_by_role": user.role.role_name.value,
     }
 
 
@@ -57,16 +51,13 @@ async def get_system_info(user: RequireSuperAdmin, db: DbSession):
 
     from app.infrastructure.models.models import Role
 
-    # Count users by role
-    role_counts = {}
-    result = await db.execute(select(Role))
-    roles = result.scalars().all()
-
-    for role_obj in roles:
-        count = await db.scalar(
-            select(func.count(User.user_id)).where(User.role_id == role_obj.role_id)
-        )
-        role_counts[role_obj.role_name.value] = count
+    # Count users by role (single query with GROUP BY)
+    result = await db.execute(
+        select(Role.role_name, func.count(User.user_id))
+        .join(User, User.role_id == Role.role_id, isouter=True)
+        .group_by(Role.role_name)
+    )
+    role_counts = {row[0].value: row[1] for row in result}
 
     return {
         "system": "AutoFlow Workshop Management",
@@ -91,12 +82,6 @@ async def admin_dashboard(user: RequireAdmin, db: DbSession):
         select(func.count(User.user_id)).where(User.is_active)
     )
 
-    # Get the current user's role (eagerly loaded)
-    current_user = await db.execute(
-        select(User).where(User.user_id == user.user_id).options(selectinload(User.role))
-    )
-    current_user_obj = current_user.scalar_one()
-
     return {
         "dashboard": {
             "total_users": total_users,
@@ -104,5 +89,5 @@ async def admin_dashboard(user: RequireAdmin, db: DbSession):
             "inactive_users": total_users - active_users,
         },
         "accessed_by": user.name,
-        "user_role": current_user_obj.role.role_name.value,
+        "user_role": user.role.role_name.value,
     }

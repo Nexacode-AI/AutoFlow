@@ -10,7 +10,7 @@ export function Login() {
   const location = useLocation();
   const { login, isLoading, error, clearError } = useAuthStore();
 
-  const [email, setEmail] = useState('admin@autoflow.local');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   // Get the page user was trying to access before redirect

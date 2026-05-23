@@ -78,8 +78,10 @@ def require_roles(*allowed: UserRole):
     """
 
     async def _guard(user: CurrentUser, db: DbSession) -> User:
-        role = await db.get(Role, user.role_id)
-        if role is None or role.role_name not in allowed:
+        # Eagerly load role to avoid redundant queries in route handlers
+        await db.refresh(user, ["role"])
+
+        if user.role is None or user.role.role_name not in allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Access denied. Required role: {', '.join(r.value for r in allowed)}",

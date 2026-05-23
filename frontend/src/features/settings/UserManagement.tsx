@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react';
 import { Users, Plus, Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/design/primitives/Button';
 import { Card, CardLabel } from '@/design/primitives/Card';
+import { Field, Input } from '@/design/primitives/Input';
+import { Select } from '@/design/primitives/Select';
 import { useAuthStore } from '@/lib/auth/useAuthStore';
+import { listUsers, createUser, updateUser, deleteUser } from '@/lib/auth/api';
+
+type UserRole = 'bay' | 'admin' | 'super_admin';
 
 interface User {
   user_id: string;
@@ -25,7 +30,7 @@ export function UserManagement() {
     name: '',
     email: '',
     password: '',
-    role: 'bay' as 'bay' | 'admin' | 'super_admin',
+    role: 'bay' as UserRole,
     is_active: true,
   });
 
@@ -34,13 +39,7 @@ export function UserManagement() {
 
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/v1/users/', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch users');
-
-      const data = await response.json();
+      const data = await listUsers(token);
       setUsers(data);
       setError(null);
     } catch (err) {
@@ -59,25 +58,13 @@ export function UserManagement() {
     if (!token) return;
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/users/', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to create user');
-      }
-
+      await createUser(token, formData);
       await fetchUsers();
       setShowCreateForm(false);
       setFormData({ name: '', email: '', password: '', role: 'bay', is_active: true });
+      setError(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create user');
+      setError(err instanceof Error ? err.message : 'Failed to create user');
     }
   };
 
@@ -86,29 +73,17 @@ export function UserManagement() {
     if (!token || !editingUser) return;
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/users/${editingUser.user_id}`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          role: formData.role,
-          is_active: formData.is_active,
-        }),
+      await updateUser(token, editingUser.user_id, {
+        name: formData.name,
+        role: formData.role,
+        is_active: formData.is_active,
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to update user');
-      }
-
       await fetchUsers();
       setEditingUser(null);
       setFormData({ name: '', email: '', password: '', role: 'bay', is_active: true });
+      setError(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update user');
+      setError(err instanceof Error ? err.message : 'Failed to update user');
     }
   };
 
@@ -117,19 +92,11 @@ export function UserManagement() {
     if (!confirm(`Deactivate user "${userName}"?`)) return;
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/users/${userId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to deactivate user');
-      }
-
+      await deleteUser(token, userId);
       await fetchUsers();
+      setError(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to deactivate user');
+      setError(err instanceof Error ? err.message : 'Failed to deactivate user');
     }
   };
 
@@ -139,7 +106,7 @@ export function UserManagement() {
       name: user.name,
       email: user.email || '',
       password: '',
-      role: user.role as any,
+      role: user.role as UserRole,
       is_active: user.is_active,
     });
     setShowCreateForm(false);
@@ -205,52 +172,44 @@ export function UserManagement() {
               {editingUser ? 'Edit User' : 'Create New User'}
             </h3>
             <div className="grid grid-cols-2 gap-3 mb-3">
-              <div>
-                <label className="block text-[12px] font-medium mb-1">Name</label>
-                <input
+              <Field label="Name" required>
+                <Input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
-                  className="w-full p-2 text-[13px] border border-gray-300 rounded-md"
                 />
-              </div>
+              </Field>
               {!editingUser && (
-                <div>
-                  <label className="block text-[12px] font-medium mb-1">Email</label>
-                  <input
+                <Field label="Email" required>
+                  <Input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
-                    className="w-full p-2 text-[13px] border border-gray-300 rounded-md"
                   />
-                </div>
+                </Field>
               )}
               {!editingUser && (
-                <div>
-                  <label className="block text-[12px] font-medium mb-1">Password</label>
-                  <input
+                <Field label="Password" required>
+                  <Input
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
-                    className="w-full p-2 text-[13px] border border-gray-300 rounded-md"
                   />
-                </div>
+                </Field>
               )}
-              <div>
-                <label className="block text-[12px] font-medium mb-1">Role</label>
-                <select
+              <Field label="Role" required>
+                <Select
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
-                  className="w-full p-2 text-[13px] border border-gray-300 rounded-md"
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
                 >
                   <option value="bay">Bay Team</option>
                   <option value="admin">Admin</option>
                   <option value="super_admin">Super Admin</option>
-                </select>
-              </div>
+                </Select>
+              </Field>
             </div>
             <div className="flex gap-2">
               <Button type="submit" variant="primary" size="sm">

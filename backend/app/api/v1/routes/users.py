@@ -35,6 +35,10 @@ class UserUpdateRequest(BaseModel):
     is_active: bool | None = None
 
 
+class AdminPasswordResetRequest(BaseModel):
+    new_password: str
+
+
 class UserResponse(BaseModel):
     user_id: str
     name: str
@@ -270,7 +274,7 @@ async def admin_reset_password(
     current_user: RequireSuperAdmin,
     db: DbSession,
     user_id: str,
-    new_password: Annotated[str, BaseModel],
+    request: AdminPasswordResetRequest,
 ):
     """Admin-triggered password reset.
 
@@ -286,7 +290,7 @@ async def admin_reset_password(
             detail=f"User with ID {user_id} not found",
         )
 
-    user.password_hash = hash_password(new_password)
+    user.password_hash = hash_password(request.new_password)
     await db.commit()
 
     return {"message": f"Password reset successfully for user {user.name}"}

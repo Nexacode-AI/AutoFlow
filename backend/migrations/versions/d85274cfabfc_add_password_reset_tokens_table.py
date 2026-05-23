@@ -1,7 +1,11 @@
 """add password reset tokens table
 
+This is the first migration in the project. The base schema (users, roles, etc.)
+was created via metadata.create_all() in init_db(). This migration adds the
+password_reset_tokens table for the password reset feature.
+
 Revision ID: d85274cfabfc
-Revises: 
+Revises:
 Create Date: 2026-05-23 15:07:11.050662
 """
 from typing import Sequence, Union

@@ -3,6 +3,7 @@
 This is the Sprint 0 auth foundation. P1 (Platform / Auth) extends it
 with user management, password reset, etc.
 """
+import logging
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
@@ -20,7 +21,10 @@ from app.core.security import (
     verify_password,
 )
 from app.core.token_blocklist import blocklist
+from app.infrastructure.config import settings
 from app.infrastructure.models.models import PasswordResetToken, Role, User
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -136,15 +140,15 @@ async def forgot_password(request: ForgotPasswordRequest, db: DbSession):
         await db.commit()
 
         # TODO: Send email with reset link
-        # For now, log it (dev mode)
-        reset_link = f"http://localhost:5174/reset-password?token={reset_token}"
-        print(f"\n{'='*60}")
-        print("PASSWORD RESET REQUESTED")
-        print(f"{'='*60}")
-        print(f"User: {user.email}")
-        print(f"Reset Link: {reset_link}")
-        print(f"Expires: {expires_at}")
-        print(f"{'='*60}\n")
+        # For now, log it (dev mode only - do not log tokens in production)
+        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
+        logger.info(
+            "Password reset requested for user %s (expires: %s)",
+            user.email,
+            expires_at,
+        )
+        if not settings.is_production:
+            logger.info("Password reset link: %s", reset_link)
 
     # Always return success (don't leak user existence)
     return {"message": "If that email exists, a reset link has been sent"}
