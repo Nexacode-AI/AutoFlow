@@ -9,17 +9,31 @@ import { useAuthStore } from '@/lib/auth/useAuthStore';
 interface Props { collapsed: boolean; onToggle: () => void; }
 
 const NAV = [
-  { to: '/',          label: 'Dashboard',  icon: LayoutGrid,    end: true  },
-  { to: '/jobs',      label: 'Job Board',  icon: ClipboardList, end: false },
-  { to: '/parts',     label: 'Parts',      icon: Package,       end: false },
-  { to: '/finance',   label: 'Finance',    icon: Wallet,        end: false },
-  { to: '/reports',   label: 'Reports',    icon: BarChart3,     end: false },
-  { to: '/settings',  label: 'Settings',   icon: Settings,      end: false },
+  { to: '/',          label: 'Dashboard',  icon: LayoutGrid,    end: true,  minRole: 'bay' },
+  { to: '/jobs',      label: 'Job Board',  icon: ClipboardList, end: false, minRole: 'bay' },
+  { to: '/parts',     label: 'Parts',      icon: Package,       end: false, minRole: 'bay' },
+  { to: '/finance',   label: 'Finance',    icon: Wallet,        end: false, minRole: 'admin' },
+  { to: '/reports',   label: 'Reports',    icon: BarChart3,     end: false, minRole: 'admin' },
+  { to: '/settings',  label: 'Settings',   icon: Settings,      end: false, minRole: 'bay' },
 ];
+
+// Role hierarchy for filtering
+const ROLE_LEVELS: Record<string, number> = {
+  bay: 1,
+  admin: 2,
+  super_admin: 3,
+};
 
 export function Sidebar({ collapsed, onToggle }: Props) {
   const nav = useNavigate();
   const { user, logout } = useAuthStore();
+
+  // Filter navigation items based on user role
+  const userRoleLevel = ROLE_LEVELS[user?.role || 'bay'] || 1;
+  const visibleNav = NAV.filter((item) => {
+    const requiredLevel = ROLE_LEVELS[item.minRole] || 1;
+    return userRoleLevel >= requiredLevel;
+  });
 
   const handleLogout = async () => {
     await logout();
@@ -65,7 +79,7 @@ export function Sidebar({ collapsed, onToggle }: Props) {
             Operations
           </p>
         )}
-        {NAV.map(item => (
+        {visibleNav.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
