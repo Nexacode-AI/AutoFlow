@@ -3,7 +3,6 @@
 All endpoints require SUPER_ADMIN role for security.
 """
 import uuid
-from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel

@@ -75,7 +75,6 @@ async def admin_dashboard(user: RequireAdmin, db: DbSession):
     Requires: ADMIN or SUPER_ADMIN role
     """
     from sqlalchemy import func, select
-    from sqlalchemy.orm import selectinload
 
     total_users = await db.scalar(select(func.count(User.user_id)))
     active_users = await db.scalar(

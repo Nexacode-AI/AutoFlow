@@ -18,7 +18,7 @@ from app.core.security import decode_access_token
 from app.core.token_blocklist import blocklist
 from app.infrastructure.base import UserRole
 from app.infrastructure.config import settings
-from app.infrastructure.models.models import Role, User
+from app.infrastructure.models.models import User
 from app.infrastructure.session import get_db
 
 oauth2_scheme = OAuth2PasswordBearer(
