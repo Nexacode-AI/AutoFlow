@@ -17,8 +17,8 @@ import logging
 from sqlalchemy import select
 
 from app.core.security import hash_password
-from app.infrastructure.base import NotificationTrigger, TickBy, UserRole
-from app.infrastructure.models.models import Role, User, WorkflowStepDefinition
+from app.infrastructure.base import NotificationTrigger, PartGrade, TickBy, UserRole
+from app.infrastructure.models.models import PartCategory, PartsCatalogue, Role, User, WorkflowStepDefinition
 from app.infrastructure.session import AsyncSessionLocal, init_db
 
 logger = logging.getLogger(__name__)
@@ -107,6 +107,90 @@ async def seed() -> None:
                 )
             )
             logger.info("+ user: %s (password: %s)", ADMIN_EMAIL, ADMIN_PASSWORD)
+
+        await db.flush()
+
+        # ── Parts catalogue — categories ──
+        CATALOGUE_CATEGORIES = [
+            ("Brakes",      "Brake pads, discs, calipers and hydraulics",          "🛑", 1),
+            ("Engine",      "Engine internals, gaskets, belts and filters",         "⚙️",  2),
+            ("Electrical",  "Batteries, alternators, sensors and wiring",           "⚡", 3),
+            ("AC",          "Air-conditioning compressors, gas and components",     "❄️",  4),
+            ("Suspension",  "Shock absorbers, struts, bushings and ball joints",    "🔩", 5),
+            ("Transmission","Gearbox, clutch and drivetrain components",            "🔧", 6),
+            ("Tyres",       "Tyres and wheel/rim related parts",                    "🔵", 7),
+            ("Lighting",    "Headlights, taillights, bulbs and indicators",         "💡", 8),
+        ]
+        category_ids: dict[str, str] = {}
+        for cat_name, cat_desc, cat_icon, cat_order in CATALOGUE_CATEGORIES:
+            cat = await db.scalar(
+                select(PartCategory).where(PartCategory.category_name == cat_name)
+            )
+            if not cat:
+                cat = PartCategory(
+                    category_name=cat_name,
+                    description=cat_desc,
+                    icon=cat_icon,
+                    sort_order=cat_order,
+                )
+                db.add(cat)
+                await db.flush()
+                logger.info("+ catalogue category: %s", cat_name)
+            category_ids[cat_name] = cat.category_id
+
+        # ── Parts catalogue — sample parts ──
+        # (category_name, part_name, grade, warranty_months)
+        CATALOGUE_PARTS = [
+            ("Brakes", "Brake Pad Set (Front)",    PartGrade.ORI, 12),
+            ("Brakes", "Brake Pad Set (Front)",    PartGrade.OM,   6),
+            ("Brakes", "Brake Pad Set (Rear)",     PartGrade.ORI, 12),
+            ("Brakes", "Brake Pad Set (Rear)",     PartGrade.OM,   6),
+            ("Brakes", "Brake Disc (Front)",       PartGrade.ORI, 12),
+            ("Brakes", "Brake Disc (Rear)",        PartGrade.ORI, 12),
+            ("Brakes", "Brake Fluid DOT 4",        PartGrade.OM,   6),
+            ("Engine", "Engine Oil Filter",        PartGrade.ORI, 12),
+            ("Engine", "Engine Oil Filter",        PartGrade.OM,   6),
+            ("Engine", "Air Filter",               PartGrade.ORI, 12),
+            ("Engine", "Air Filter",               PartGrade.OM,   6),
+            ("Engine", "Timing Belt Kit",          PartGrade.ORI, 12),
+            ("Engine", "Spark Plug (set of 4)",    PartGrade.ORI, 12),
+            ("Engine", "Spark Plug (set of 4)",    PartGrade.OM,   6),
+            ("Engine", "Radiator Hose (Upper)",    PartGrade.ORI, 12),
+            ("Electrical", "Car Battery 55Ah",     PartGrade.ORI, 24),
+            ("Electrical", "Car Battery 55Ah",     PartGrade.OM,  12),
+            ("Electrical", "Alternator",           PartGrade.ORI, 12),
+            ("Electrical", "Starter Motor",        PartGrade.ORI, 12),
+            ("AC", "AC Compressor",                PartGrade.ORI, 12),
+            ("AC", "AC Compressor",                PartGrade.OM,   6),
+            ("AC", "AC Gas R134a (Refill)",        PartGrade.OM,   3),
+            ("AC", "AC Cabin Filter",              PartGrade.ORI, 12),
+            ("AC", "AC Cabin Filter",              PartGrade.OM,   6),
+            ("Suspension", "Front Shock Absorber", PartGrade.ORI, 12),
+            ("Suspension", "Front Shock Absorber", PartGrade.OM,   6),
+            ("Suspension", "Rear Shock Absorber",  PartGrade.ORI, 12),
+            ("Suspension", "Rear Shock Absorber",  PartGrade.OM,   6),
+            ("Suspension", "Front Lower Ball Joint", PartGrade.ORI, 12),
+            ("Suspension", "Stabiliser Link",      PartGrade.OM,   6),
+        ]
+        for cat_name, part_name, grade, warranty in CATALOGUE_PARTS:
+            cat_id = category_ids.get(cat_name)
+            if not cat_id:
+                continue
+            exists = await db.scalar(
+                select(PartsCatalogue).where(
+                    PartsCatalogue.category_id == cat_id,
+                    PartsCatalogue.name == part_name,
+                    PartsCatalogue.grade == grade,
+                )
+            )
+            if not exists:
+                db.add(PartsCatalogue(
+                    category_id=cat_id,
+                    name=part_name,
+                    grade=grade,
+                    warranty_months=warranty,
+                ))
+                logger.info("+ catalogue part: %s (%s)", part_name, grade.value)
 
         await db.commit()
 
