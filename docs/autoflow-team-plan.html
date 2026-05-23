@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AutoFlow — Team Work Plan</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --muted: #5b5b5b;
+    --light: #8a8a8a;
+    --accent: #4f7cff;
+    --line: #e2e2dd;
+    --bg-soft: #f6f6f3;
+    --p1: #4f7cff; --p2: #16a34a; --p3: #ea580c;
+    --p4: #9333ea; --p5: #dc2626; --p6: #0891b2; --p7: #ca8a04;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  @page {
+    size: A4;
+    margin: 14mm 14mm 16mm 14mm;
+  }
+
+  html, body {
+    background: #d8d8d4;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    font-size: 10.5pt;
+    line-height: 1.55;
+  }
+
+  /* Each .page is one A4 sheet on screen; in print it just flows */
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    background: #fff;
+    margin: 8mm auto;
+    padding: 14mm;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  }
+
+  @media print {
+    html, body { background: #fff; }
+    .page {
+      width: auto;
+      min-height: auto;
+      margin: 0;
+      padding: 0;
+      box-shadow: none;
+      page-break-after: always;
+    }
+    .page:last-child { page-break-after: auto; }
+    .no-break { page-break-inside: avoid; }
+  }
+
+  h1 {
+    font-size: 22pt;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  h2 {
+    font-size: 14pt;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 22px 0 10px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid var(--ink);
+  }
+  h3 {
+    font-size: 11pt;
+    font-weight: 700;
+    margin: 14px 0 6px;
+  }
+  p { margin-bottom: 8px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 9pt; }
+
+  /* ---- Cover ---- */
+  .cover {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 250mm;
+  }
+  .cover .brand {
+    font-size: 12pt;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .cover h1 { font-size: 34pt; margin: 14px 0 8px; }
+  .cover .sub {
+    font-size: 13pt;
+    color: var(--muted);
+    margin-bottom: 30px;
+  }
+  .cover .meta {
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+    font-size: 9.5pt;
+    color: var(--light);
+  }
+  .cover .meta b { color: var(--ink); font-weight: 600; }
+
+  /* ---- Lead / intro box ---- */
+  .lead {
+    background: var(--bg-soft);
+    border-left: 3px solid var(--accent);
+    padding: 12px 14px;
+    margin: 12px 0;
+    font-size: 10pt;
+  }
+  .note {
+    background: #fffbe6;
+    border-left: 3px solid var(--p7);
+    padding: 10px 13px;
+    margin: 12px 0;
+    font-size: 9.5pt;
+  }
+
+  ul { margin: 4px 0 10px 18px; }
+  li { margin-bottom: 4px; }
+
+  /* ---- Tables ---- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0 14px;
+    font-size: 9.3pt;
+  }
+  th {
+    background: var(--ink);
+    color: #fff;
+    text-align: left;
+    padding: 7px 9px;
+    font-weight: 600;
+    font-size: 8.6pt;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  td {
+    padding: 7px 9px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background: #fafaf8; }
+
+  /* ---- Person cards ---- */
+  .person {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .person-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    color: #fff;
+  }
+  .person-tag {
+    background: rgba(255,255,255,0.22);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-weight: 700;
+    font-size: 9pt;
+  }
+  .person-title { font-weight: 700; font-size: 11pt; }
+  .person-body { padding: 10px 12px; }
+  .person-body .row { margin-bottom: 7px; }
+  .person-body .label {
+    font-size: 8.2pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--light);
+    margin-bottom: 2px;
+  }
+
+  .bg-p1 { background: var(--p1); } .bg-p2 { background: var(--p2); }
+  .bg-p3 { background: var(--p3); } .bg-p4 { background: var(--p4); }
+  .bg-p5 { background: var(--p5); } .bg-p6 { background: var(--p6); }
+  .bg-p7 { background: var(--p7); }
+
+  /* ---- Timeline ---- */
+  .wave {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px 13px;
+    margin-bottom: 10px;
+  }
+  .wave-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 5px;
+  }
+  .wave-week {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 8.5pt;
+    padding: 2px 9px;
+    border-radius: 4px;
+  }
+  .wave-name { font-weight: 700; font-size: 10.5pt; }
+
+  .chip {
+    display: inline-block;
+    border-radius: 4px;
+    padding: 1px 7px;
+    font-size: 8.3pt;
+    font-weight: 700;
+    color: #fff;
+    margin-right: 3px;
+  }
+
+  .gantt {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.4pt;
+    margin: 10px 0;
+  }
+  .gantt th, .gantt td {
+    border: 1px solid var(--line);
+    text-align: center;
+    padding: 4px 2px;
+  }
+  .gantt th { background: var(--ink); color: #fff; }
+  .gantt td.lbl {
+    text-align: left;
+    padding-left: 7px;
+    font-weight: 600;
+    white-space: nowrap;
+    background: #fafaf8;
+  }
+  .gantt .fill { color: #fff; font-weight: 700; }
+
+  .footer {
+    margin-top: 26px;
+    border-top: 1px solid var(--line);
+    padding-top: 8px;
+    font-size: 8pt;
+    color: var(--light);
+    display: flex;
+    justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ PAGE 1 — COVER ============ -->
+<div class="page">
+  <div class="cover">
+    <div class="brand">AutoFlow</div>
+    <h1>Team Work Plan</h1>
+    <div class="sub">Building the full system — 7 people, 4 weeks, end&#8209;to&#8209;end</div>
+
+    <div class="lead" style="margin-bottom:24px;">
+      This plan divides the complete AutoFlow system — frontend, backend, and
+      testing — among 7 team members. The goal: everyone has a roughly equal
+      share, nobody&#8217;s work blocks or breaks anyone else&#8217;s, and the
+      pieces snap together cleanly at the end.
+    </div>
+
+    <div class="meta">
+      <p><b>Starting point:</b> the new UI (UiUx&#8209;New) is already built with mock data.</p>
+      <p><b>Remaining work:</b> build the backend and connect the UI to real data, feature by feature.</p>
+      <p><b>Backend:</b> FastAPI &nbsp;&middot;&nbsp; <b>Frontend:</b> React (existing) &nbsp;&middot;&nbsp; <b>Timeline:</b> 4 weeks</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PAGE 2 — HOW WE DIVIDE ============ -->
+<div class="page">
+  <h1 style="font-size:18pt;">How the Work Is Divided</h1>
+
+  <div class="lead">
+    We split the system into <b>7 vertical slices</b>. Each person owns one
+    complete feature — its database tables, its backend API, its frontend
+    wiring, and its tests. One feature, one owner, top to bottom.
+  </div>
+
+  <h3>Why slices, not layers</h3>
+  <p>
+    If we split by layer — &#8220;one person does all frontend, another does
+    all backend&#8221; — everyone ends up editing the same files at the same
+    time. That means constant merge conflicts and one person waiting on
+    another all day.
+  </p>
+  <p>
+    With vertical slices, each person works inside their <b>own folder</b>.
+    Two people rarely touch the same file, so their work never collides.
+    Think of it like 7 builders each finishing a different room of a house
+    instead of all crowding into the kitchen.
+  </p>
+
+  <h3>The two phases</h3>
+  <table>
+    <thead>
+      <tr><th style="width:26%">Phase</th><th>What happens</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>Phase 0 &mdash; Sprint 0</b><br/><span class="small muted">Week 1, Days 1&ndash;3</span></td>
+        <td>The whole team builds the shared foundation together. This is
+        <b>infrastructure only</b> &mdash; the skeleton everything else plugs
+        into. No real features yet. Kept tight: just 3 days.</td>
+      </tr>
+      <tr>
+        <td><b>Phase 1 &mdash; The 7 Slices</b><br/><span class="small muted">Week 1 Day 4 &ndash; Week 4</span></td>
+        <td>Each person builds their own feature end&#8209;to&#8209;end. This is
+        where all the real functionality gets written. Slices run in
+        overlapping waves to fit the 4 weeks.</td>
+      </tr>
+      <tr>
+        <td><b>Integration &amp; Testing</b><br/><span class="small muted">Week 4, final days</span></td>
+        <td>All slices are connected, the seams are tested, bugs fixed,
+        and the system polished.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <b>One simple rule keeps everyone unblocked:</b> in the first 3 days the
+    team agrees on a <b>frozen API contract</b> &mdash; a written list of every endpoint and
+    the exact shape of its data. After that, frontend and backend people build
+    against the agreed shape and never have to wait for each other.
+  </div>
+
+  <h3>The 7 people at a glance</h3>
+  <table>
+    <thead>
+      <tr><th style="width:14%">Person</th><th style="width:30%">Slice</th><th>Owns</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><b>P1</b></td><td>Platform, Auth &amp; DevOps</td><td>Login, roles, the workflow engine, infrastructure</td></tr>
+      <tr><td><b>P2</b></td><td>Job Board &amp; Dashboard</td><td>Workflow list, search, status board, statistics</td></tr>
+      <tr><td><b>P3</b></td><td>Intake A</td><td>Steps 1&ndash;5: check&#8209;in, vehicle, photos, WhatsApp</td></tr>
+      <tr><td><b>P4</b></td><td>Diagnosis &amp; Parts</td><td>Steps 6&ndash;8: troubleshooting, parts catalog</td></tr>
+      <tr><td><b>P5</b></td><td>Estimate &amp; Approval</td><td>Steps 9&ndash;13: pricing, markup, customer approval</td></tr>
+      <tr><td><b>P6</b></td><td>Repair &amp; Close&#8209;out</td><td>Steps 14&ndash;20: repair photos, QC, receipt, delivery</td></tr>
+      <tr><td><b>P7</b></td><td>Finance</td><td>Expenses, PDF extraction, profit calculator</td></tr>
+    </tbody>
+  </table>
+
+  <div class="footer"><span>AutoFlow &mdash; Team Work Plan</span><span>Page 2</span></div>
+</div>
+
+<!-- ============ PAGE 3 — PHASE 0 ============ -->
+<div class="page">
+  <h2>Phase 0 &mdash; Sprint 0: Foundation</h2>
+  <p class="muted small" style="margin-top:-4px;">Week 1, Days 1&ndash;3 &nbsp;&middot;&nbsp; whole team together</p>
+
+  <div class="lead">
+    Sprint 0 is <b>infrastructure, not features</b>. It is the foundation, the
+    pipes, and the wiring in the walls &mdash; no rooms or furniture yet, but
+    every feature later plugs into it. <b>Nobody starts their own slice until
+    this is finished.</b> With only 4 weeks, this is kept tight &mdash; 3 days,
+    not a full week.
+  </div>
+
+  <p>
+    Why do this as a shared step: if all 7 people set up their own backend and
+    pick their own table names, nothing connects. Three days of shared setup
+    means all 7 slices snap together cleanly later. To stay on time, all 6
+    items below run in parallel on Days 1&ndash;3, not one after another.
+  </p>
+
+  <h3>The 6 deliverables</h3>
+  <table class="no-break">
+    <thead>
+      <tr><th style="width:24%">Item</th><th style="width:18%">Type</th><th>What it is</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>Repo structure</b></td><td>Setup</td>
+        <td>One repository, two folders: <b>frontend/</b> (the existing
+        UiUx&#8209;New moves here) and <b>backend/</b> (new FastAPI project).</td>
+      </tr>
+      <tr>
+        <td><b>Backend skeleton</b></td><td>Setup</td>
+        <td>An empty FastAPI app that simply starts up. PostgreSQL database,
+        SQLAlchemy + Alembic for tables, and Docker Compose so every machine
+        runs the exact same setup. No real endpoints yet.</td>
+      </tr>
+      <tr>
+        <td><b>Frozen API contract</b></td><td>Document</td>
+        <td>The most important deliverable. A written list of every endpoint
+        &mdash; its URL, what data goes in, what data comes back. It is a
+        document, not code. Once agreed, it is <b>frozen</b>.</td>
+      </tr>
+      <tr>
+        <td><b>Shared data model</b></td><td>Setup</td>
+        <td>Agree on the core shared tables: <b>workflows, steps, parts,
+        users, expenses</b>. Just the columns &mdash; no business logic.</td>
+      </tr>
+      <tr>
+        <td><b>Auth</b></td><td>Small feature</td>
+        <td>A working login. This is the <b>only</b> bit of real functionality
+        in Sprint 0, because every other slice needs to log in to be tested.
+        Roles can stay loose for now.</td>
+      </tr>
+      <tr>
+        <td><b>CI pipeline</b></td><td>Setup</td>
+        <td>A config that automatically runs lint and tests on every push, so
+        broken code is caught early.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <b>In short:</b> 5 of the 6 items are pure setup. Only <b>Auth</b> is a
+    small piece of real functionality. All the actual features &mdash; creating
+    workflows, pricing parts, finance, PDF extraction &mdash; are built in
+    Phase 1.
+  </div>
+
+  <h3>Who leads what in Days 1&ndash;3</h3>
+  <p>
+    The whole team works on Sprint 0 together, but to avoid chaos each item
+    has one lead while others pair in:
+  </p>
+  <ul>
+    <li><b>P1</b> &mdash; leads repo structure, backend skeleton, CI pipeline, and auth.</li>
+    <li><b>P2, P5</b> &mdash; lead the frozen API contract (they touch the most endpoints).</li>
+    <li><b>P3, P4, P6, P7</b> &mdash; lead the shared data model and review the API contract for their own slice.</li>
+  </ul>
+
+  <div class="footer"><span>AutoFlow &mdash; Team Work Plan</span><span>Page 3</span></div>
+</div>
+
+<!-- ============ PAGE 4 — SLICES P1-P3 ============ -->
+<div class="page">
+  <h2>Phase 1 &mdash; The 7 Slices</h2>
+  <p class="muted small" style="margin-top:-4px;">Week 1 Day 4 &ndash; Week 4 &nbsp;&middot;&nbsp; each person owns one feature, top to bottom</p>
+
+  <div class="person no-break">
+    <div class="person-head bg-p1">
+      <span class="person-tag">P1</span>
+      <span class="person-title">Platform, Auth &amp; DevOps</span>
+    </div>
+    <div class="person-body">
+      <div class="row"><div class="label">Responsibility</div>
+        The backbone everyone depends on: login &amp; user roles, and the
+        <b>workflow engine</b> &mdash; the logic for the 20 steps and the
+        7&#8209;state status pipeline (Intake &rarr; Diagnosis &rarr; Awaiting
+        &rarr; In Repair &rarr; QC &rarr; Ready &rarr; Delivered).</div>
+      <div class="row"><div class="label">Frontend</div> Login screen, app shell, routing.</div>
+      <div class="row"><div class="label">Backend</div> Auth (JWT), users, roles, the step/status engine, Docker &amp; CI upkeep.</div>
+      <div class="row"><div class="label">Why first</div> Nothing else can create or move a workflow until this engine exists.</div>
+    </div>
+  </div>
+
+  <div class="person no-break">
+    <div class="person-head bg-p2">
+      <span class="person-tag">P2</span>
+      <span class="person-title">Job Board &amp; Dashboard</span>
+    </div>
+    <div class="person-body">
+      <div class="row"><div class="label">Responsibility</div>
+        The screens managers live in: the list of all jobs, the kanban status
+        board, search and filtering, and the dashboard statistics.</div>
+      <div class="row"><div class="label">Frontend</div> JobBoard, Dashboard.</div>
+      <div class="row"><div class="label">Backend</div> Create / list / filter workflows, dashboard stat calculations, status updates.</div>
+      <div class="row"><div class="label">Depends on</div> P1&#8217;s workflow engine.</div>
+    </div>
+  </div>
+
+  <div class="person no-break">
+    <div class="person-head bg-p3">
+      <span class="person-tag">P3</span>
+      <span class="person-title">Intake A &mdash; Steps 1 to 5</span>
+    </div>
+    <div class="person-body">
+      <div class="row"><div class="label">Responsibility</div>
+        The first moments of a job: creating the workflow from a plate number,
+        capturing customer &amp; vehicle details, uploading body and chassis
+        photos, and starting the WhatsApp group.</div>
+      <div class="row"><div class="label">Frontend</div> Check&#8209;In, Vehicle, and Communication modules.</div>
+      <div class="row"><div class="label">Backend</div> Workflow creation, customer/vehicle data, photo upload, WhatsApp link generation.</div>
+      <div class="row"><div class="label">Depends on</div> P1&#8217;s workflow engine. (Lighter slice &mdash; this person also helps with shared testing.)</div>
+    </div>
+  </div>
+
+  <div class="footer"><span>AutoFlow &mdash; Team Work Plan</span><span>Page 4</span></div>
+</div>
+
+<!-- ============ PAGE 5 — SLICES P4-P7 ============ -->
+<div class="page">
+  <div class="person no-break">
+    <div class="person-head bg-p4">
+      <span class="person-tag">P4</span>
+      <span class="person-title">Diagnosis &amp; Parts &mdash; Steps 6 to 8</span>
+    </div>
+    <div class="person-body">
+      <div class="row"><div class="label">Responsibility</div>
+        Troubleshooting the car and the <b>parts catalog</b> &mdash; categories,
+        individual parts, and the ORI / OM grade options. Mechanics pick the
+        spare parts needed here.</div>
+      <div class="row"><div class="label">Frontend</div> Diagnosis module, Parts management page.</div>
+      <div class="row"><div class="label">Backend</div> Parts catalog (categories, parts, prices), spare&#8209;part selection per workflow.</div>
+      <div class="row"><div class="label">Why early</div> P5&#8217;s pricing work cannot start until the parts catalog exists.</div>
+    </div>
+  </div>
+
+  <div class="person no-break">
+    <div class="person-head bg-p5">
+      <span class="person-tag">P5</span>
+      <span class="person-title">Estimate &amp; Approval &mdash; Steps 9 to 13</span>
+    </div>
+    <div class="person-body">
+      <div class="row"><div class="label">Responsibility</div>
+        The money side: entering supplier prices, applying markup with the
+        60% profit rule, the multi&#8209;supplier pricing tool, generating the
+        quotation, and the customer approval form.</div>
+      <div class="row"><div class="label">Frontend</div> Estimate, SparePartOrder, Authorization modules, Customer Approval page.</div>
+      <div class="row"><div class="label">Backend</div> Supplier pricing, markup &amp; margin rules, quotation generation, approval handling.</div>
+      <div class="row"><div class="label">Depends on</div> P4&#8217;s parts catalog. (Heaviest slice &mdash; give to a strong member.)</div>
+    </div>
+  </div>
+
+  <div class="person no-break">
+    <div class="person-head bg-p6">
+      <span class="person-tag">P6</span>
+      <span class="person-title">Repair &amp; Close&#8209;out &mdash; Steps 14 to 20</span>
+    </div>
+    <div class="person-body">
+      <div class="row"><div class="label">Responsibility</div>
+        The back half of the job: work&#8209;progress photos, quality check,
+        car wash, receipt PDF, receiving payment, car delivery, and the
+        customer feedback request.</div>
+      <div class="row"><div class="label">Frontend</div> Repair &amp; Close&#8209;out modules, Customer Feedback page.</div>
+      <div class="row"><div class="label">Backend</div> Photo handling, receipt PDF generation, payment &amp; delivery status, feedback.</div>
+      <div class="row"><div class="label">Depends on</div> P5&#8217;s approval (you can only repair confirmed parts).</div>
+    </div>
+  </div>
+
+  <div class="person no-break">
+    <div class="person-head bg-p7">
+      <span class="person-tag">P7</span>
+      <span class="person-title">Finance</span>
+    </div>
+    <div class="person-body">
+      <div class="row"><div class="label">Responsibility</div>
+        The finance section: company expenses with <b>bank&#8209;slip PDF
+        amount extraction</b>, personal expenses for 2 admins across 7
+        categories, and the profit calculator.</div>
+      <div class="row"><div class="label">Frontend</div> Finance, Company Expenses, Personal Expenses, Profit Calculator.</div>
+      <div class="row"><div class="label">Backend</div> Expense records, PDF text extraction, category detection, profit math.</div>
+      <div class="row"><div class="label">Depends on</div> P5&#8217;s pricing (profit = quoted price &minus; actual expense).</div>
+    </div>
+  </div>
+
+  <div class="footer"><span>AutoFlow &mdash; Team Work Plan</span><span>Page 5</span></div>
+</div>
+
+<!-- ============ PAGE 6 — TIMELINE ============ -->
+<div class="page">
+  <h2>Order of Completion</h2>
+
+  <div class="lead">
+    Some slices depend on others, so the order matters. Anyone waiting on a
+    dependency does <b>not</b> sit idle &mdash; they build against the frozen
+    API contract using a stub, then swap in the real data later.
+  </div>
+
+  <div class="wave no-break">
+    <div class="wave-head">
+      <span class="wave-week">WEEK 1 &middot; DAYS 1&ndash;3</span>
+      <span class="wave-name">Foundation</span>
+    </div>
+    <p class="small">Whole team builds Sprint 0 together &mdash; the shared skeleton. Kept to 3 days. No feature work starts yet.</p>
+  </div>
+
+  <div class="wave no-break">
+    <div class="wave-head">
+      <span class="wave-week">WEEK 1 DAY 4 &ndash; WEEK 2</span>
+      <span class="wave-name">First wave &mdash; the dependencies</span>
+    </div>
+    <p class="small">
+      <span class="chip bg-p1">P1</span>
+      <span class="chip bg-p4">P4</span>
+      Everything else needs these, so they start the moment Sprint 0 ends.
+      P1 builds the workflow engine; P4 builds the parts catalog. No workflow
+      can move without P1, and no part can be priced without P4.
+    </p>
+  </div>
+
+  <div class="wave no-break">
+    <div class="wave-head">
+      <span class="wave-week">WEEK 2 &ndash; MID WEEK 3</span>
+      <span class="wave-name">Second wave &mdash; build on the base</span>
+    </div>
+    <p class="small">
+      <span class="chip bg-p2">P2</span>
+      <span class="chip bg-p3">P3</span>
+      <span class="chip bg-p5">P5</span>
+      Job board, intake, and pricing start mid&#8209;Week 2 &mdash; first against
+      stubs, then on the real first&#8209;wave APIs as they land. P5&#8217;s
+      pricing locks onto P4&#8217;s parts catalog as soon as it is ready.
+    </p>
+  </div>
+
+  <div class="wave no-break">
+    <div class="wave-head">
+      <span class="wave-week">MID WEEK 3 &ndash; WEEK 4</span>
+      <span class="wave-name">Third wave &mdash; the back half</span>
+    </div>
+    <p class="small">
+      <span class="chip bg-p6">P6</span>
+      <span class="chip bg-p7">P7</span>
+      Close&#8209;out needs P5&#8217;s approval done. Finance needs P5&#8217;s
+      pricing done, since profit is calculated from the quoted price.
+    </p>
+  </div>
+
+  <div class="wave no-break">
+    <div class="wave-head">
+      <span class="wave-week">WEEK 4 &middot; LAST 3 DAYS</span>
+      <span class="wave-name">Integration + Testing</span>
+    </div>
+    <p class="small">
+      All 7 slices are wired together, the seams where features meet are
+      tested, bugs fixed, and the whole system polished. With 4 weeks,
+      integration and testing run as one combined push.
+    </p>
+  </div>
+
+  <h3>Timeline at a glance</h3>
+  <p class="small muted" style="margin-top:-4px;">Each week is split into two halves (a = first half, b = second half).</p>
+  <table class="gantt no-break">
+    <thead>
+      <tr>
+        <th style="width:22%">Person / Phase</th>
+        <th>W1a</th><th>W1b</th><th>W2a</th><th>W2b</th>
+        <th>W3a</th><th>W3b</th><th>W4a</th><th>W4b</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="lbl">Sprint 0 (all)</td>
+        <td class="fill" style="background:#1a1a1a">&#9632;</td>
+        <td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="lbl">P1 &mdash; Platform / Auth</td>
+        <td></td>
+        <td class="fill" style="background:var(--p1)">&#9632;</td>
+        <td class="fill" style="background:var(--p1)">&#9632;</td>
+        <td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="lbl">P4 &mdash; Diagnosis / Parts</td>
+        <td></td>
+        <td class="fill" style="background:var(--p4)">&#9632;</td>
+        <td class="fill" style="background:var(--p4)">&#9632;</td>
+        <td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="lbl">P2 &mdash; Job Board</td>
+        <td></td><td></td>
+        <td class="fill" style="background:var(--p2)">&#9632;</td>
+        <td class="fill" style="background:var(--p2)">&#9632;</td>
+        <td class="fill" style="background:var(--p2)">&#9632;</td>
+        <td></td><td></td><td></td></tr>
+      <tr><td class="lbl">P3 &mdash; Intake A</td>
+        <td></td><td></td>
+        <td class="fill" style="background:var(--p3)">&#9632;</td>
+        <td class="fill" style="background:var(--p3)">&#9632;</td>
+        <td class="fill" style="background:var(--p3)">&#9632;</td>
+        <td></td><td></td><td></td></tr>
+      <tr><td class="lbl">P5 &mdash; Estimate / Approval</td>
+        <td></td><td></td><td></td>
+        <td class="fill" style="background:var(--p5)">&#9632;</td>
+        <td class="fill" style="background:var(--p5)">&#9632;</td>
+        <td class="fill" style="background:var(--p5)">&#9632;</td>
+        <td></td><td></td></tr>
+      <tr><td class="lbl">P6 &mdash; Repair / Close&#8209;out</td>
+        <td></td><td></td><td></td><td></td>
+        <td class="fill" style="background:var(--p6)">&#9632;</td>
+        <td class="fill" style="background:var(--p6)">&#9632;</td>
+        <td class="fill" style="background:var(--p6)">&#9632;</td>
+        <td></td></tr>
+      <tr><td class="lbl">P7 &mdash; Finance</td>
+        <td></td><td></td><td></td><td></td><td></td>
+        <td class="fill" style="background:var(--p7)">&#9632;</td>
+        <td class="fill" style="background:var(--p7)">&#9632;</td>
+        <td></td></tr>
+      <tr><td class="lbl">Integration + testing (all)</td>
+        <td></td><td></td><td></td><td></td><td></td><td></td>
+        <td class="fill" style="background:#1a1a1a">&#9632;</td>
+        <td class="fill" style="background:#1a1a1a">&#9632;</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <b>4 weeks is tight.</b> It only works because each slice starts on stubs
+    from the frozen API contract instead of waiting, and because integration
+    overlaps the last slices rather than coming after them.
+  </div>
+
+  <div class="footer"><span>AutoFlow &mdash; Team Work Plan</span><span>Page 6</span></div>
+</div>
+
+<!-- ============ PAGE 7 — RULES ============ -->
+<div class="page">
+  <h2>Rules That Keep Work From Colliding</h2>
+
+  <div class="lead">
+    The whole plan only works if everyone follows a few simple ground rules.
+    They exist so that one person&#8217;s work can never break another&#8217;s.
+  </div>
+
+  <h3>1. One feature folder, one owner</h3>
+  <p>
+    Each person works only inside their own feature folder. Do not edit
+    another person&#8217;s folder &mdash; if you need a change there, ask them.
+    This is what guarantees two people never overwrite each other.
+  </p>
+
+  <h3>2. Shared files change carefully</h3>
+  <p>
+    A few files are shared by everyone &mdash; routing, the API contract, common
+    types. These change only through a small, reviewed pull request, approved
+    by whoever owns that shared file.
+  </p>
+
+  <h3>3. The API contract is frozen</h3>
+  <p>
+    Once Sprint 0 ends (Day 3), the list of endpoints and their data shapes does not
+    change casually. If a change is truly needed, it is discussed with the
+    team first &mdash; because someone else may be building against it.
+  </p>
+
+  <h3>4. Every slice ships with its own tests</h3>
+  <p>
+    There is no separate &#8220;tester&#8221; person. The owner of each slice
+    writes the tests for that slice. Everyone is multi&#8209;talented &mdash;
+    frontend, backend, and testing are all part of owning a feature.
+  </p>
+
+  <h3>5. Don&#8217;t sit idle on a dependency</h3>
+  <p>
+    If your slice is waiting on another, build against the frozen API contract
+    with a stub (fake data in the agreed shape). When the real backend is
+    ready, you simply swap it in &mdash; no time lost.
+  </p>
+
+  <h3>6. Daily 15&#8209;minute sync</h3>
+  <p>
+    A short daily check&#8209;in to flag when one slice is about to unblock
+    another, and to catch problems early.
+  </p>
+
+  <h2>Summary</h2>
+  <table class="no-break">
+    <thead>
+      <tr><th style="width:30%">Principle</th><th>In one line</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><b>Divide by slice</b></td><td>Each person owns one full feature, top to bottom.</td></tr>
+      <tr><td><b>Foundation first</b></td><td>Days 1&ndash;3 build the shared skeleton &mdash; no features yet.</td></tr>
+      <tr><td><b>Frozen contract</b></td><td>The agreed API shapes let everyone work without waiting.</td></tr>
+      <tr><td><b>Respect the order</b></td><td>P1 &amp; P4 first; they unblock the rest.</td></tr>
+      <tr><td><b>Own your tests</b></td><td>Whoever builds a slice tests that slice.</td></tr>
+      <tr><td><b>Equal load</b></td><td>P1 &amp; P5 are heaviest; P3 is lighter and helps with testing.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="footer"><span>AutoFlow &mdash; Team Work Plan</span><span>Page 7</span></div>
+</div>
+
+</body>
+</html>

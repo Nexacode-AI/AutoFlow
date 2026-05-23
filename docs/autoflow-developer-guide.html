@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoFlow — How It Works</title>
+  <link rel="preconnect" href="https://rsms.me/" />
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #fbfbf9;
+      --surface: #ffffff;
+      --surface-hover: #f5f4f0;
+      --surface-sunken: #f7f6f2;
+      --border: #e8e6e0;
+      --border-strong: #b8b4ab;
+      --text-primary: #1a1a1a;
+      --text-secondary: #5c5c5c;
+      --text-tertiary: #8b8780;
+      --accent: #4f7cff;
+      --accent-hover: #3d68f0;
+      --accent-bg: rgba(79, 124, 255, 0.08);
+      --success: #2d8654;     --success-bg: #e6f4ec;
+      --warning: #b86e00;     --warning-bg: #fbf0dc;
+      --danger:  #c03a2b;     --danger-bg:  #fbe9e6;
+      --info:    #1c6fbe;     --info-bg:    #e6f0f9;
+      --grade-ori:    #2d8654;
+      --grade-oem:    #b86e00;
+      --status-intake: #5c5c5c;
+      --status-diagnosis: #b86e00;
+      --status-repair: #1c6fbe;
+      --status-qc: #6b3fa0;
+      --status-ready: #2d8654;
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 1.5rem; }
+    body {
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      font-feature-settings: 'cv11', 'ss01';
+    }
+    @supports (font-variation-settings: normal) {
+      body { font-family: 'Inter var', var(--font-sans); }
+    }
+    .mono { font-family: var(--font-mono); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      max-width: 1180px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+    aside {
+      border-right: 1px solid var(--border);
+      padding: 32px 18px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+    }
+    aside .brand {
+      display: flex; align-items: center; gap: 10px;
+      padding-bottom: 18px; margin-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    aside .brand .logo {
+      width: 30px; height: 30px; border-radius: 7px;
+      background: var(--text-primary); color: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 15px;
+    }
+    aside .brand h1 { font-size: 15px; font-weight: 600; }
+    aside .brand p { font-size: 11px; color: var(--text-tertiary); }
+    nav ul { list-style: none; }
+    nav .section-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--text-tertiary);
+      padding: 14px 8px 5px;
+    }
+    nav a {
+      display: block; padding: 6px 10px;
+      font-size: 13px; color: var(--text-secondary);
+      border-radius: 6px; text-decoration: none;
+    }
+    nav a:hover { background: var(--surface-hover); color: var(--text-primary); }
+
+    main { padding: 48px 60px 96px; min-width: 0; }
+
+    h2 {
+      font-size: 27px; font-weight: 600; letter-spacing: -0.02em;
+      margin-top: 52px; margin-bottom: 6px;
+      scroll-margin-top: 28px;
+    }
+    h2:first-of-type { margin-top: 0; }
+    h2 .num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 8px;
+      background: var(--accent-bg); color: var(--accent);
+      font-size: 14px; font-weight: 700; margin-right: 11px;
+      vertical-align: -5px;
+    }
+    h2 + .lede { font-size: 15.5px; color: var(--text-secondary); margin-bottom: 22px; }
+    h3 {
+      font-size: 18px; font-weight: 600; letter-spacing: -0.01em;
+      margin-top: 34px; margin-bottom: 10px;
+    }
+    p { margin-bottom: 13px; color: var(--text-secondary); }
+    p strong { color: var(--text-primary); font-weight: 600; }
+    ul, ol { margin-left: 22px; margin-bottom: 15px; color: var(--text-secondary); }
+    li { margin-bottom: 5px; }
+    li strong { color: var(--text-primary); }
+    hr { border: 0; border-top: 1px solid var(--border); margin: 34px 0; }
+    .big { font-size: 16px; }
+
+    .cover {
+      padding: 36px 0 30px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 40px;
+    }
+    .cover .tag {
+      display: inline-block; padding: 5px 11px; border-radius: 5px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--accent);
+      background: var(--accent-bg); margin-bottom: 16px;
+    }
+    .cover h1 {
+      font-size: 36px; font-weight: 600; letter-spacing: -0.025em;
+      margin-bottom: 10px;
+    }
+    .cover .sub { font-size: 17px; color: var(--text-secondary); max-width: 660px; }
+
+    .callout {
+      border-left: 3px solid var(--accent);
+      background: var(--accent-bg);
+      padding: 14px 16px;
+      border-radius: 0 7px 7px 0;
+      margin: 16px 0;
+      font-size: 14.5px;
+      color: var(--text-secondary);
+    }
+    .callout strong { color: var(--text-primary); }
+    .callout.tip  { border-color: var(--success); background: var(--success-bg); }
+    .callout.tip strong { color: var(--success); }
+    .callout.warn { border-color: var(--warning); background: var(--warning-bg); }
+    .callout.warn strong { color: var(--warning); }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 9px; border-radius: 5px;
+      font-size: 12px; font-weight: 600;
+      vertical-align: 1px;
+    }
+    .badge.neutral { background: var(--surface-sunken); color: var(--text-secondary); border: 1px solid var(--border); }
+    .badge.accent  { background: var(--accent-bg); color: var(--accent); }
+    .badge.success { background: var(--success-bg); color: var(--success); }
+    .badge.warning { background: var(--warning-bg); color: var(--warning); }
+    .badge.info    { background: var(--info-bg);    color: var(--info); }
+    .badge.plate   { background: var(--surface-sunken); color: var(--text-primary); border: 1px solid var(--border); font-family: var(--font-mono); }
+
+    /* role cards */
+    .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0; }
+    .role-card {
+      border: 1px solid var(--border); border-radius: 10px;
+      background: var(--surface); padding: 16px;
+    }
+    .role-card .who {
+      font-size: 15px; font-weight: 600; color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .role-card .does { font-size: 13.5px; color: var(--text-secondary); }
+
+    /* pipeline */
+    .pipeline {
+      display: flex; align-items: flex-start;
+      padding: 20px; margin: 16px 0;
+      overflow-x: auto;
+      border: 1px solid var(--border); border-radius: 10px;
+      background: var(--surface);
+    }
+    .pipe-step { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 96px; }
+    .pipe-dot {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: white; margin-bottom: 8px;
+    }
+    .pipe-label { font-size: 12px; font-weight: 600; color: var(--text-primary); text-align: center; }
+    .pipe-note  { font-size: 11px; color: var(--text-tertiary); text-align: center; margin-top: 2px; }
+    .pipe-line { flex: 1; min-width: 16px; height: 2px; background: var(--border-strong); margin-top: 18px; }
+
+    /* module grid */
+    .modules { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
+    .module {
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px; background: var(--surface);
+    }
+    .module .mhead { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .module .micon { font-size: 18px; }
+    .module .mname { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+    .module .mdesc { font-size: 12.5px; color: var(--text-secondary); }
+
+    /* step */
+    .step {
+      border: 1px solid var(--border); border-radius: 11px;
+      background: var(--surface); margin: 16px 0; overflow: hidden;
+    }
+    .step-head {
+      display: flex; align-items: center; gap: 14px;
+      padding: 15px 18px;
+      background: var(--surface-sunken);
+      border-bottom: 1px solid var(--border);
+    }
+    .step-num {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--accent); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; flex-shrink: 0;
+    }
+    .step-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+    .step-who   { font-size: 12.5px; color: var(--text-tertiary); margin-top: 1px; }
+    .step-body { padding: 16px 18px; }
+    .step-body p { font-size: 14.5px; margin-bottom: 10px; }
+    .step-body p:last-child { margin-bottom: 0; }
+    .step-body .eg {
+      background: var(--surface-sunken);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 11px 13px;
+      font-size: 13.5px;
+      color: var(--text-secondary);
+      margin-top: 10px;
+    }
+    .step-body .eg strong { color: var(--text-primary); }
+    .step-body .eg .lbl {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--accent);
+      display: block; margin-bottom: 4px;
+    }
+
+    .group-head {
+      font-size: 19px; font-weight: 600;
+      margin-top: 38px; margin-bottom: 4px;
+      display: flex; align-items: center; gap: 9px;
+    }
+    .group-head .ico { font-size: 22px; }
+    .group-sub { font-size: 13.5px; color: var(--text-tertiary); margin-bottom: 6px; }
+
+    /* journey story */
+    .story {
+      border: 1px solid var(--border); border-radius: 11px;
+      background: var(--surface); padding: 4px 20px;
+      margin: 16px 0;
+    }
+    .story .day {
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--accent);
+      padding: 16px 0 6px;
+    }
+    .story ol { margin-left: 20px; }
+    .story li { font-size: 14px; margin-bottom: 7px; }
+
+    @media print {
+      aside { display: none; }
+      .layout { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 880px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+      main { padding: 28px 22px; }
+      .modules, .roles { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <aside>
+    <div class="brand">
+      <div class="logo">A</div>
+      <div>
+        <h1>AutoFlow</h1>
+        <p>How it works</p>
+      </div>
+    </div>
+    <nav>
+      <p class="section-label">Start here</p>
+      <ul>
+        <li><a href="#what">What is AutoFlow?</a></li>
+        <li><a href="#who">Who uses it</a></li>
+        <li><a href="#journey">A car's journey</a></li>
+        <li><a href="#areas">The 8 areas of work</a></li>
+      </ul>
+      <p class="section-label">The 20 steps</p>
+      <ul>
+        <li><a href="#steps">Step-by-step</a></li>
+      </ul>
+      <p class="section-label">The rest of the app</p>
+      <ul>
+        <li><a href="#board">The job board</a></li>
+        <li><a href="#parts">Parts &amp; pricing</a></li>
+        <li><a href="#finance">Finance &amp; profit</a></li>
+      </ul>
+      <p class="section-label">See it all together</p>
+      <ul>
+        <li><a href="#example">Full example: Ahmad's car</a></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <main>
+
+    <!-- COVER -->
+    <div class="cover">
+      <span class="tag">A simple guide · No jargon</span>
+      <h1>AutoFlow — how the workshop runs</h1>
+      <p class="sub">
+        AutoFlow takes a car from the moment it arrives at the workshop to the moment the
+        customer drives it away — and tracks every job, part, price and payment along the way.
+        This guide explains the whole thing in plain language. No technical terms.
+      </p>
+    </div>
+
+    <!-- 1. WHAT -->
+    <h2 id="what"><span class="num">1</span>What is AutoFlow?</h2>
+    <p class="lede">Think of it as a checklist that the whole workshop shares.</p>
+
+    <p class="big">
+      A car comes in for repair. Lots of people touch it — the mechanic, the service advisor,
+      the admin, the manager. Lots of things happen — photos, diagnosis, supplier quotes,
+      customer approval, the actual repair, payment, delivery.
+    </p>
+    <p class="big">
+      Without a system, all of that lives in people's heads, in WhatsApp chats, on paper.
+      Things get forgotten. <strong>AutoFlow puts the entire process on one screen</strong> so
+      everyone can see exactly where a car is and what happens next.
+    </p>
+
+    <div class="callout">
+      <strong>One simple idea:</strong> every car becomes a "job". Every job moves through the
+      same <strong>20 steps</strong>, in order, from "car arrived" to "customer happy". Anyone
+      can open a job and instantly see what's done and what's left.
+    </div>
+
+    <!-- 2. WHO -->
+    <h2 id="who"><span class="num">2</span>Who uses it</h2>
+    <p class="lede">Five kinds of people. Each has their part of the job.</p>
+
+    <div class="roles">
+      <div class="role-card">
+        <div class="who">🔧 Bay Team (the mechanics)</div>
+        <div class="does">Receive the car, take photos, diagnose the problem, choose the parts needed, do the actual repair, and tick the quality checks.</div>
+      </div>
+      <div class="role-card">
+        <div class="who">📞 Service Advisor</div>
+        <div class="does">The customer's main contact. Creates the WhatsApp group, sends the price approval, asks for feedback at the end.</div>
+      </div>
+      <div class="role-card">
+        <div class="who">🗂️ Admin</div>
+        <div class="does">Handles the office side — customer details, supplier prices, the markup, quotation, invoice and recording payment.</div>
+      </div>
+      <div class="role-card">
+        <div class="who">👔 Management</div>
+        <div class="does">Keeps an eye on pricing and signs off the quality check before a car can be handed back.</div>
+      </div>
+      <div class="role-card" style="grid-column: span 2;">
+        <div class="who">👑 Super Admin (the owner)</div>
+        <div class="does">Can do everything. Mostly watches the Finance and Profit screens to see how the business is doing.</div>
+      </div>
+    </div>
+
+    <p>And of course — <strong>the customer</strong>. They never log in, but they get WhatsApp
+      messages, approve their quote with one tap, and leave feedback at the end.</p>
+
+    <!-- 3. JOURNEY -->
+    <h2 id="journey"><span class="num">3</span>A car's journey</h2>
+    <p class="lede">Every car passes through 7 simple stages. This is the "big picture".</p>
+
+    <div class="pipeline">
+      <div class="pipe-step"><div class="pipe-dot" style="background:var(--status-intake)">1</div><span class="pipe-label">Intake</span><span class="pipe-note">car arrives</span></div>
+      <div class="pipe-line"></div>
+      <div class="pipe-step"><div class="pipe-dot" style="background:var(--status-diagnosis)">2</div><span class="pipe-label">Diagnosis</span><span class="pipe-note">what's wrong?</span></div>
+      <div class="pipe-line"></div>
+      <div class="pipe-step"><div class="pipe-dot" style="background:var(--status-diagnosis)">3</div><span class="pipe-label">Awaiting</span><span class="pipe-note">customer to OK</span></div>
+      <div class="pipe-line"></div>
+      <div class="pipe-step"><div class="pipe-dot" style="background:var(--status-repair)">4</div><span class="pipe-label">In Repair</span><span class="pipe-note">work happening</span></div>
+      <div class="pipe-line"></div>
+      <div class="pipe-step"><div class="pipe-dot" style="background:var(--status-qc)">5</div><span class="pipe-label">QC</span><span class="pipe-note">quality check</span></div>
+      <div class="pipe-line"></div>
+      <div class="pipe-step"><div class="pipe-dot" style="background:var(--status-ready)">6</div><span class="pipe-label">Ready</span><span class="pipe-note">waiting pickup</span></div>
+      <div class="pipe-line"></div>
+      <div class="pipe-step"><div class="pipe-dot" style="background:var(--status-ready)">7</div><span class="pipe-label">Delivered</span><span class="pipe-note">job done</span></div>
+    </div>
+
+    <p>
+      You'll see these 7 stages everywhere — on the job board, at the top of each job. They tell
+      you, at a glance, how far along a car is. The detailed work happens inside the
+      <strong>20 steps</strong>, but the 7 stages are the easy summary.
+    </p>
+
+    <!-- 4. AREAS -->
+    <h2 id="areas"><span class="num">4</span>The 8 areas of work</h2>
+    <p class="lede">20 steps is a lot to look at. So we group them into 8 friendly areas.</p>
+
+    <p>
+      When you open a car's job, you don't see a wall of 20 steps. You see <strong>8 areas</strong>
+      down the side — like chapters in a book. Click an area, and you see just the steps that
+      belong to it. Each area shows its own progress (like "2 of 3 done").
+    </p>
+
+    <div class="modules">
+      <div class="module"><div class="mhead"><span class="micon">🧾</span><span class="mname">1. Check-in</span></div><div class="mdesc">Car arrives, complaints noted, customer details taken.</div></div>
+      <div class="module"><div class="mhead"><span class="micon">🚗</span><span class="mname">2. Vehicle</span></div><div class="mdesc">Photos of the car body and the chassis number.</div></div>
+      <div class="module"><div class="mhead"><span class="micon">💬</span><span class="mname">3. Communication</span></div><div class="mdesc">A WhatsApp group with the customer and the team.</div></div>
+      <div class="module"><div class="mhead"><span class="micon">🩺</span><span class="mname">4. Diagnosis</span></div><div class="mdesc">Find the problem, list the parts needed.</div></div>
+      <div class="module"><div class="mhead"><span class="micon">💰</span><span class="mname">5. Estimate</span></div><div class="mdesc">Get supplier prices, add the workshop's markup.</div></div>
+      <div class="module"><div class="mhead"><span class="micon">✅</span><span class="mname">6. Authorization</span></div><div class="mdesc">Customer reviews the price and approves it.</div></div>
+      <div class="module"><div class="mhead"><span class="micon">🔧</span><span class="mname">7. Parts &amp; Repair</span></div><div class="mdesc">Order parts, receive them, do the repair, quality check.</div></div>
+      <div class="module"><div class="mhead"><span class="micon">🧼</span><span class="mname">8. Close-out</span></div><div class="mdesc">Wash, invoice, payment, hand over, ask for feedback.</div></div>
+    </div>
+
+    <div class="callout tip">
+      <strong>The simple version:</strong> Get the car in → find the problem → agree a price →
+      do the work → hand it back. The 8 areas are just those 5 ideas, spelled out a little more.
+    </div>
+
+    <!-- 5. STEPS -->
+    <h2 id="steps"><span class="num">5</span>The 20 steps, explained simply</h2>
+    <p class="lede">Each step is one clear action. Here's what happens at each — with a real example. The example car is <span class="badge plate">WXY 1234</span> — Ahmad's Honda Civic.</p>
+
+    <!-- CHECK-IN -->
+    <div class="group-head"><span class="ico">🧾</span> Check-in</div>
+    <p class="group-sub">Getting the car into the system.</p>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">1</div><div><div class="step-title">Create the job</div><div class="step-who">Done by Bay or Service Advisor</div></div></div>
+      <div class="step-body">
+        <p>The moment a car arrives — before anyone even talks to the customer — staff type the car's plate number into AutoFlow. The system instantly creates a job with its own reference code.</p>
+        <div class="eg"><span class="lbl">Example</span>Mohd types <strong>"WXY 1234"</strong>. AutoFlow creates job <strong>WF-2024-0001</strong>. The car is now officially "in the system".</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">2</div><div><div class="step-title">Inspection sheet</div><div class="step-who">Done by Bay</div></div></div>
+      <div class="step-body">
+        <p>The mechanic walks around the car with the customer, ticks off a quick checklist (exterior, interior, any existing dents), and notes down what the customer is complaining about.</p>
+        <div class="eg"><span class="lbl">Example</span>Note written: <em>"Customer says brakes squeak in the morning, aircon blowing warm. Mileage 45,230 km."</em></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">5</div><div><div class="step-title">Customer details</div><div class="step-who">Done by Admin or Service Advisor</div></div></div>
+      <div class="step-body">
+        <p>Admin fills in the customer's full information — name, phone, email, car model, mileage, chassis number. This is needed later to send the price approval and the receipt.</p>
+        <div class="eg"><span class="lbl">Example</span>Name: Ahmad bin Abdullah · Phone: +60 12-345 6789 · Car: Honda Civic 2020.</div>
+      </div>
+    </div>
+
+    <!-- VEHICLE -->
+    <div class="group-head"><span class="ico">🚗</span> Vehicle</div>
+    <p class="group-sub">Proof of the car's condition.</p>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">4</div><div><div class="step-title">Vehicle photos</div><div class="step-who">Done by Bay</div></div></div>
+      <div class="step-body">
+        <p>The mechanic photographs the car from four sides (front, back, left, right) and takes a clear photo of the chassis number. This protects both the workshop and the customer — everyone agrees on the car's condition before any work begins.</p>
+        <div class="eg"><span class="lbl">Example</span>5 photos uploaded. Chassis number read off the photo and confirmed: MH1234567890.</div>
+      </div>
+    </div>
+
+    <!-- COMMUNICATION -->
+    <div class="group-head"><span class="ico">💬</span> Communication</div>
+    <p class="group-sub">Keeping the customer in the loop.</p>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">3</div><div><div class="step-title">WhatsApp group</div><div class="step-who">Done by Service Advisor</div></div></div>
+      <div class="step-body">
+        <p>A WhatsApp group is created with the customer, the service advisor and the mechanic. All repair updates and photos go here. AutoFlow even writes the group name and the invite message for you — one tap opens WhatsApp ready to go.</p>
+        <div class="eg"><span class="lbl">Example</span>Group created: <strong>"WF-2024-0001 - WXY 1234 Repair"</strong> with Ahmad, Sarah and Mohd.</div>
+      </div>
+    </div>
+
+    <!-- DIAGNOSIS -->
+    <div class="group-head"><span class="ico">🩺</span> Diagnosis</div>
+    <p class="group-sub">Working out what's wrong and what's needed.</p>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">6</div><div><div class="step-title">Troubleshooting</div><div class="step-who">Done by Bay</div></div></div>
+      <div class="step-body">
+        <p>The mechanic inspects the car and writes down what they found and what they recommend fixing.</p>
+        <div class="eg"><span class="lbl">Example</span><em>"Front brake pads worn out. AC compressor not kicking in. Engine oil overdue. Recommend: replace brake pads, recharge AC + new cabin filter, full oil service."</em></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">7</div><div><div class="step-title">Spare parts needed</div><div class="step-who">Done by Bay</div></div></div>
+      <div class="step-body">
+        <p>The mechanic picks the parts needed from a built-in catalogue — by category, one tap each — and sets quantities. AutoFlow then writes a tidy "parts enquiry" message that can be sent straight to suppliers on WhatsApp to ask for prices.</p>
+        <div class="eg"><span class="lbl">Example</span>Parts chosen: Brake Pads (Front), Engine Oil 5W-30, Air Filter, AC Gas, Oil Filter. AutoFlow generates the enquiry message → sent to 3 suppliers.</div>
+      </div>
+    </div>
+
+    <!-- ESTIMATE -->
+    <div class="group-head"><span class="ico">💰</span> Estimate</div>
+    <p class="group-sub">Turning supplier prices into a customer price.</p>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">8</div><div><div class="step-title">Supplier pricing</div><div class="step-who">Done by Admin or Management</div></div></div>
+      <div class="step-body">
+        <p>Suppliers reply on WhatsApp with their prices. The admin types each supplier's prices into AutoFlow. Because every supplier is kept separate, the workshop can compare them side by side and see who's cheapest.</p>
+        <div class="eg"><span class="lbl">Example</span>Brake pads: Suan Huat RM 150, Stuttgart RM 160, Bavaria RM 155. Suan Huat is cheapest.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">9</div><div><div class="step-title">Markup</div><div class="step-who">Done by Admin or Management</div></div></div>
+      <div class="step-body">
+        <p>The workshop adds its profit margin on top of the supplier price. AutoFlow checks that every part keeps at least a <strong>60% profit margin</strong> — if something is below, it warns you in red.</p>
+        <div class="eg"><span class="lbl">Example</span>Brake pads cost RM 150 → sold to customer at RM 375. That's a 60% margin. ✅</div>
+      </div>
+    </div>
+
+    <!-- AUTHORIZATION -->
+    <div class="group-head"><span class="ico">✅</span> Authorization</div>
+    <p class="group-sub">Getting the customer's "yes" before spending their money.</p>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">10</div><div><div class="step-title">Customer confirmation</div><div class="step-who">Done by Service Advisor</div></div></div>
+      <div class="step-body">
+        <p>AutoFlow sends the customer a secure link. The customer opens it on their phone — no app, no login — and for each part chooses <strong>Original</strong> or <strong>cheaper alternative</strong>, then taps Approve. The workshop knows immediately.</p>
+        <div class="eg"><span class="lbl">Example</span>Ahmad opens the link, picks Original parts (he wants the longer warranty), taps <strong>Approve RM 2,145</strong>.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">11</div><div><div class="step-title">Quotation</div><div class="step-who">Done by Admin</div></div></div>
+      <div class="step-body">
+        <p>A proper quotation document is built — all the parts, labour charge, tax, and grand total — and saved as a PDF that can be shared with the customer.</p>
+        <div class="eg"><span class="lbl">Example</span>Quotation: parts RM 2,145 + labour RM 500 + tax = grand total. PDF generated.</div>
+      </div>
+    </div>
+
+    <!-- PARTS & REPAIR -->
+    <div class="group-head"><span class="ico">🔧</span> Parts &amp; Repair</div>
+    <p class="group-sub">Ordering the parts and doing the actual work.</p>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">12</div><div><div class="step-title">Order the parts</div><div class="step-who">Done by Admin</div></div></div>
+      <div class="step-body">
+        <p>This is the workshop's pricing command-centre. The admin sees every part's price from every supplier in one table, picks the best supplier for each, and AutoFlow writes a separate WhatsApp order message for each supplier. There's also a summary showing the cheapest supplier and the total customer charge.</p>
+        <div class="eg"><span class="lbl">Example</span>Crank Sensor → ordered from Suan Huat. Ignition Coil → from Stuttgart. AutoFlow sends each supplier their own order list on WhatsApp.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">13</div><div><div class="step-title">Parts arrive</div><div class="step-who">Done by Bay</div></div></div>
+      <div class="step-body">
+        <p>When parts arrive, the mechanic checks each one off — confirming the right quantity arrived and it's in good condition. If anything is damaged or wrong, AutoFlow flags it so the supplier can be contacted.</p>
+        <div class="eg"><span class="lbl">Example</span>All 3 ordered parts arrived. Mohd marks each "Received — Good condition".</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">14</div><div><div class="step-title">Do the work &amp; mark complete</div><div class="step-who">Done by Bay</div></div></div>
+      <div class="step-body">
+        <p>The mechanic does the repair, uploads "before / during / after" photos as proof of the work, writes completion notes, and marks the work done.</p>
+        <div class="eg"><span class="lbl">Example</span>Brake pads replaced, AC recharged, oil changed. 3 photos uploaded. Note: <em>"All work complete, no surprises."</em></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">15</div><div><div class="step-title">Quality check</div><div class="step-who">Done by Management</div></div></div>
+      <div class="step-body">
+        <p>Management runs a final quality checklist — repairs done properly, test drive done, nothing else wrong, car ready. They either approve it, or send it back for rework.</p>
+        <div class="eg"><span class="lbl">Example</span>All checks pass. QC approved. The car is now <span class="badge success">Ready</span> for pickup.</div>
+      </div>
+    </div>
+
+    <!-- CLOSE-OUT -->
+    <div class="group-head"><span class="ico">🧼</span> Close-out</div>
+    <p class="group-sub">Handing the car back and finishing up.</p>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">16</div><div><div class="step-title">Car wash</div><div class="step-who">Done by Bay</div></div></div>
+      <div class="step-body">
+        <p>The car gets a final wash and clean before it goes back to the customer — exterior wash, interior vacuum, windows, tyre shine.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">17</div><div><div class="step-title">Send the receipt</div><div class="step-who">Done by Admin</div></div></div>
+      <div class="step-body">
+        <p>AutoFlow builds the final receipt — all the parts, labour, tax and total — and writes it as a neat message that can be edited and sent to the customer on WhatsApp. It even includes a reminder for the next service date.</p>
+        <div class="eg"><span class="lbl">Example</span>Receipt total RM 1,398.60 sent to Ahmad. Reminder: next inspection 22 Nov 2026.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">18</div><div><div class="step-title">Receive payment</div><div class="step-who">Done by Admin</div></div></div>
+      <div class="step-body">
+        <p>The admin records how the customer paid — cash, card, online transfer or QR — the amount, and a reference number.</p>
+        <div class="eg"><span class="lbl">Example</span>Ahmad pays by QR (DuitNow). Admin records it against the job.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">19</div><div><div class="step-title">Hand over the car</div><div class="step-who">Done by Admin or Service Advisor</div></div></div>
+      <div class="step-body">
+        <p>A final handover checklist — ID verified, payment confirmed, customer happy with the car, documents handed over, signature taken. Then the keys go back.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">20</div><div><div class="step-title">Ask for feedback</div><div class="step-who">Done by Service Advisor</div></div></div>
+      <div class="step-body">
+        <p>AutoFlow sends the customer a short feedback link on WhatsApp. The customer rates the service out of 5 stars and leaves a comment. Once that's in, the job is officially closed.</p>
+        <div class="eg"><span class="lbl">Example</span>Ahmad leaves 5★: <em>"Excellent service, brakes feel new, car came back clean."</em> Job closed. ✅</div>
+      </div>
+    </div>
+
+    <!-- 6. BOARD -->
+    <h2 id="board"><span class="num">6</span>The job board</h2>
+    <p class="lede">One screen to see every car in the workshop right now.</p>
+
+    <p>
+      The job board is like a whiteboard with columns — Intake, Diagnosis, Awaiting, In Repair,
+      QC, Ready. Every car sits in the column that matches its stage. One glance tells you how
+      busy the workshop is and which cars need attention.
+    </p>
+    <p>
+      Each car shows as a small card: the plate number, the customer, which step it's on, and
+      the estimated total. Click a card to open that car's full job.
+    </p>
+
+    <div class="callout">
+      <strong>The dashboard</strong> takes this even further — it shows the day's numbers at a
+      glance: how many active jobs, how many waiting for customer approval, how many ready for
+      pickup, and today's revenue.
+    </div>
+
+    <!-- 7. PARTS -->
+    <h2 id="parts"><span class="num">7</span>Parts &amp; pricing</h2>
+    <p class="lede">Every part comes in two grades. The customer chooses.</p>
+
+    <p>AutoFlow keeps a catalogue of parts, organised by category (brakes, engine, electrical,
+      AC, suspension). Every part is offered in two grades:</p>
+
+    <div class="roles">
+      <div class="role-card" style="border-left:3px solid var(--grade-ori)">
+        <div class="who" style="color:var(--grade-ori)">Original (ORI)</div>
+        <div class="does">The genuine manufacturer part. Comes with a <strong>1-year warranty</strong>. Costs more — best for newer cars.</div>
+      </div>
+      <div class="role-card" style="border-left:3px solid var(--grade-oem)">
+        <div class="who" style="color:var(--grade-oem)">Alternative (OM)</div>
+        <div class="does">A good-quality non-branded part. Comes with a <strong>6-month warranty</strong>. Around 25–35% cheaper.</div>
+      </div>
+    </div>
+
+    <p>
+      When the customer approves their quote (Step 10), they choose Original or Alternative for
+      each part — so they're always in control of the cost-versus-warranty trade-off.
+    </p>
+    <p>
+      Staff can also add new categories and new parts to the catalogue at any time.
+    </p>
+
+    <!-- 8. FINANCE -->
+    <h2 id="finance"><span class="num">8</span>Finance &amp; profit</h2>
+    <p class="lede">Three things: what the workshop paid, what the owners spent, and how much profit each car made.</p>
+
+    <h3>💼 Company expenses</h3>
+    <p>
+      For every repair, the workshop pays suppliers for the parts. The admin uploads the bank
+      payment slip for each part, and AutoFlow reads the amount off it automatically (the admin
+      can correct it if needed). Add them all up and you have the <strong>real cost</strong> of
+      that repair.
+    </p>
+    <div class="callout warn">
+      <strong>Note:</strong> the bank slip files are never kept. AutoFlow only reads the amount
+      and then discards the file. Nothing sensitive is stored.
+    </div>
+
+    <h3>👤 Personal expenses</h3>
+    <p>
+      The two owners also have their own spending to track. Each uploads their bank statement,
+      and AutoFlow sorts every transaction into one of 7 categories. If it can't tell which
+      category a transaction belongs to, it puts it in <strong>"Others"</strong> with a yellow
+      warning, so the owner can fix it with one tap.
+    </p>
+    <p>Each owner can edit only their own spending, but both can see the combined totals.</p>
+
+    <h3>📈 Profit calculator</h3>
+    <p>
+      This is where it all comes together. For each finished car, AutoFlow compares:
+    </p>
+    <ul>
+      <li><strong>What the customer paid</strong> (the quoted price, with markup) — the revenue.</li>
+      <li><strong>What the workshop actually paid</strong> suppliers (from the bank slips) — the cost.</li>
+    </ul>
+    <p>
+      The difference is the <strong>profit</strong>. AutoFlow shows it per car and even per part,
+      with a colour code — green if the margin is healthy, red if it needs a look. The owner can
+      finally see, with proof, exactly how much each repair earned.
+    </p>
+
+    <div class="callout tip">
+      <strong>In short:</strong> the workflow captures what you charged, the company-expenses tab
+      captures what you paid, and the profit calculator does the maths. No more guessing.
+    </div>
+
+    <!-- 9. EXAMPLE -->
+    <h2 id="example"><span class="num">9</span>Full example — Ahmad's Honda Civic</h2>
+    <p class="lede">The whole journey, start to finish, in one story.</p>
+
+    <div class="callout">
+      Ahmad brings his <strong>Honda Civic (WXY 1234)</strong> in on a Friday morning. His
+      complaint: squeaky brakes, warm aircon, and the oil is overdue.
+    </div>
+
+    <div class="story">
+      <div class="day">Friday morning — the car comes in</div>
+      <ol>
+        <li>Mohd (mechanic) types the plate into AutoFlow. Job <strong>WF-2024-0001</strong> is created.</li>
+        <li>He walks around the car with Ahmad, ticks the inspection checklist, and notes the complaints.</li>
+        <li>Sarah (service advisor) starts a WhatsApp group with Ahmad, herself and Mohd.</li>
+        <li>Mohd photographs the car from all sides and the chassis number.</li>
+        <li>Admin fills in Ahmad's full details. The car's stage moves to <strong>Diagnosis</strong>.</li>
+      </ol>
+
+      <div class="day">Friday midday — figuring out the price</div>
+      <ol>
+        <li>Mohd diagnoses the faults and picks the parts needed from the catalogue.</li>
+        <li>AutoFlow writes a parts enquiry — Mohd sends it to three suppliers on WhatsApp.</li>
+        <li>Suppliers reply with prices through the afternoon. Admin types them all in.</li>
+        <li>Admin adds the markup. Every part keeps a healthy 60% margin. The quote is ready.</li>
+      </ol>
+
+      <div class="day">Friday afternoon — the customer decides</div>
+      <ol>
+        <li>Sarah sends Ahmad a secure approval link. The car's stage moves to <strong>Awaiting</strong>.</li>
+        <li>Ahmad opens it on his phone, picks Original parts for the warranty, and taps Approve.</li>
+        <li>Admin builds the formal quotation PDF.</li>
+      </ol>
+
+      <div class="day">Saturday — the repair</div>
+      <ol>
+        <li>Admin orders the parts — picking the cheapest supplier for each. Stage: <strong>In Repair</strong>.</li>
+        <li>Parts arrive by late morning. Mohd checks each one in.</li>
+        <li>Mohd does the repair and uploads before / during / after photos.</li>
+        <li>Management runs the quality check — all good. The car is now <strong>Ready</strong>.</li>
+      </ol>
+
+      <div class="day">Saturday afternoon — handing back</div>
+      <ol>
+        <li>The car is washed and cleaned.</li>
+        <li>Admin sends Ahmad the receipt on WhatsApp.</li>
+        <li>Ahmad pays by QR. Admin records the payment.</li>
+        <li>Sarah does the handover checklist; Ahmad signs and collects his keys.</li>
+        <li>Sarah sends a feedback link. Ahmad leaves 5 stars. The job is <strong>closed</strong>.</li>
+      </ol>
+
+      <div class="day">The following week — the numbers</div>
+      <ol>
+        <li>Admin uploads the supplier bank slips into the Finance section.</li>
+        <li>AutoFlow reads the real amounts paid.</li>
+        <li>The Profit Calculator now shows it clearly: this repair earned the workshop a
+          healthy profit — and the owner can see exactly how much.</li>
+      </ol>
+    </div>
+
+    <div class="callout tip">
+      <strong>That's AutoFlow.</strong> One shared system, from the plate scan to the profit
+      report — so nothing is forgotten, the customer always knows what's happening, and the
+      owner always knows how the business is doing.
+    </div>
+
+    <hr />
+    <p style="text-align:center; font-size:13px; color:var(--text-tertiary); margin-top:46px;">
+      AutoFlow — How It Works · A plain-language guide
+    </p>
+
+  </main>
+</div>
+</body>
+</html>
