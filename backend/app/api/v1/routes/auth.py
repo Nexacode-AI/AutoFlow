@@ -130,11 +130,10 @@ async def forgot_password(request: ForgotPasswordRequest, db: DbSession):
         reset_token = secrets.token_urlsafe(32)
         expires_at = datetime.now(UTC) + timedelta(hours=1)
 
-        # Store token in database (remove timezone for PostgreSQL compatibility)
         db_token = PasswordResetToken(
             user_id=user.user_id,
             token=reset_token,
-            expires_at=expires_at.replace(tzinfo=None),
+            expires_at=expires_at,
         )
         db.add(db_token)
         await db.commit()
@@ -160,13 +159,11 @@ async def reset_password(request: ResetPasswordRequest, db: DbSession):
 
     Token must be unused and not expired. Marks token as used after success.
     """
-    # Find valid token (use naive datetime for comparison)
-    now_naive = datetime.now(UTC).replace(tzinfo=None)
     result = await db.execute(
         select(PasswordResetToken)
         .where(PasswordResetToken.token == request.token)
         .where(PasswordResetToken.used_at.is_(None))
-        .where(PasswordResetToken.expires_at > now_naive)
+        .where(PasswordResetToken.expires_at > datetime.now(UTC))
     )
     reset_token = result.scalar_one_or_none()
 
@@ -185,8 +182,7 @@ async def reset_password(request: ResetPasswordRequest, db: DbSession):
 
     user.password_hash = hash_password(request.new_password)
 
-    # Mark token as used (use naive datetime)
-    reset_token.used_at = datetime.now(UTC).replace(tzinfo=None)
+    reset_token.used_at = datetime.now(UTC)
 
     await db.commit()
 

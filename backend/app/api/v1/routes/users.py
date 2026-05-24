@@ -5,7 +5,7 @@ All endpoints require SUPER_ADMIN role for security.
 import uuid
 
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -35,7 +35,7 @@ class UserUpdateRequest(BaseModel):
 
 
 class AdminPasswordResetRequest(BaseModel):
-    new_password: str
+    new_password: str = Field(min_length=8)
 
 
 class UserResponse(BaseModel):

@@ -4,7 +4,6 @@ import { Button } from '@/design/primitives/Button';
 import { Card, CardLabel } from '@/design/primitives/Card';
 import { Field, Input } from '@/design/primitives/Input';
 import { Select } from '@/design/primitives/Select';
-import { useAuthStore } from '@/lib/auth/useAuthStore';
 import { listUsers, createUser, updateUser, deleteUser } from '@/lib/auth/api';
 
 type UserRole = 'bay' | 'admin' | 'super_admin';
@@ -18,7 +17,6 @@ interface User {
 }
 
 export function UserManagement() {
-  const { token } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,11 +33,9 @@ export function UserManagement() {
   });
 
   const fetchUsers = async () => {
-    if (!token) return;
-
     try {
       setLoading(true);
-      const data = await listUsers(token);
+      const data = await listUsers();
       setUsers(data);
       setError(null);
     } catch (err) {
@@ -51,14 +47,13 @@ export function UserManagement() {
 
   useEffect(() => {
     fetchUsers();
-  }, [token]);
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
 
     try {
-      await createUser(token, formData);
+      await createUser(formData);
       await fetchUsers();
       setShowCreateForm(false);
       setFormData({ name: '', email: '', password: '', role: 'bay', is_active: true });
@@ -70,10 +65,10 @@ export function UserManagement() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token || !editingUser) return;
+    if (!editingUser) return;
 
     try {
-      await updateUser(token, editingUser.user_id, {
+      await updateUser(editingUser.user_id, {
         name: formData.name,
         role: formData.role,
         is_active: formData.is_active,
@@ -88,11 +83,10 @@ export function UserManagement() {
   };
 
   const handleDelete = async (userId: string, userName: string) => {
-    if (!token) return;
     if (!confirm(`Deactivate user "${userName}"?`)) return;
 
     try {
-      await deleteUser(token, userId);
+      await deleteUser(userId);
       await fetchUsers();
       setError(null);
     } catch (err) {

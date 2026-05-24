@@ -1,7 +1,3 @@
-/**
- * Auth Store - Global authentication state management with Zustand
- */
-
 import { create } from 'zustand';
 import * as authApi from './api';
 import * as storage from './storage';
@@ -15,7 +11,6 @@ export interface User {
 
 interface AuthState {
   user: User | null;
-  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -27,111 +22,60 @@ interface AuthState {
   clearError: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   user: storage.getUser(),
-  token: storage.getToken(),
   isAuthenticated: !!storage.getToken(),
   isLoading: false,
   error: null,
 
-  /**
-   * Login with email and password
-   */
   login: async (email: string, password: string) => {
     set({ isLoading: true, error: null });
 
     try {
-      // Call login API
       const response = await authApi.login(email, password);
-      const token = response.access_token;
+      // Save token first so authedFetch can read it for getCurrentUser
+      storage.saveToken(response.access_token);
 
-      // Get user info with the token
-      const user = await authApi.getCurrentUser(token);
-
-      // Save to localStorage
-      storage.saveToken(token);
+      const user = await authApi.getCurrentUser();
       storage.saveUser(user);
 
-      // Update state
-      set({
-        user,
-        token,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      });
+      set({ user, isAuthenticated: true, isLoading: false, error: null });
     } catch (error) {
+      storage.clearAuth();
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
-      set({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: errorMessage,
-      });
+      set({ user: null, isAuthenticated: false, isLoading: false, error: errorMessage });
       throw error;
     }
   },
 
-  /**
-   * Logout current user
-   */
   logout: async () => {
-    const { token } = get();
-
     try {
-      // Call logout API if we have a token
-      if (token) {
-        await authApi.logout(token);
+      if (storage.getToken()) {
+        await authApi.logout();
       }
     } catch (error) {
       console.error('Logout API call failed:', error);
-      // Continue with local logout even if API fails
     } finally {
-      // Clear local storage and state
       storage.clearAuth();
-      set({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        error: null,
-      });
+      set({ user: null, isAuthenticated: false, error: null });
     }
   },
 
-  /**
-   * Check if current token is still valid
-   */
   checkAuth: async () => {
-    const { token } = get();
-
-    if (!token) {
+    if (!storage.getToken()) {
       set({ isAuthenticated: false, user: null });
       return;
     }
 
     try {
-      // Verify token by fetching user info
-      const user = await authApi.getCurrentUser(token);
-
-      // Update user info (might have changed)
+      const user = await authApi.getCurrentUser();
       storage.saveUser(user);
       set({ user, isAuthenticated: true });
-    } catch (error) {
-      // Token is invalid - clear auth
+    } catch {
       storage.clearAuth();
-      set({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-      });
+      set({ user: null, isAuthenticated: false });
     }
   },
 
-  /**
-   * Clear error message
-   */
-  clearError: () => {
-    set({ error: null });
-  },
+  clearError: () => set({ error: null }),
 }));

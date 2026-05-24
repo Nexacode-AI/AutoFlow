@@ -26,9 +26,9 @@ def upgrade() -> None:
     sa.Column('token_id', sa.UUID(as_uuid=False), nullable=False),
     sa.Column('user_id', sa.UUID(as_uuid=False), nullable=False),
     sa.Column('token', sa.String(length=255), nullable=False),
-    sa.Column('expires_at', sa.DateTime(), nullable=False),
-    sa.Column('used_at', sa.DateTime(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('used_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.user_id'], ),
     sa.PrimaryKeyConstraint('token_id'),
     sa.UniqueConstraint('token')
