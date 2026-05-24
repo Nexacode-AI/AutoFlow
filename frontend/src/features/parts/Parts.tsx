@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Plus, Search, Package, ShieldCheck, FolderPlus,
   Pencil, Trash2, AlertCircle, Loader2,
@@ -50,36 +50,47 @@ export function Parts() {
     { type: 'category'; item: Category } | { type: 'part'; item: CataloguePart } | null
   >(null);
 
+  // Generation counter for loadParts — prevents stale results from rapid
+  // category switching (only the latest request's result is applied).
+  const partsSeq = useRef(0);
+
+  // Ref so loadCategories can read the current selectedCatId without needing it
+  // as a useCallback dep (which would create stale closures inside onConfirm).
+  const catIdRef = useRef(selectedCatId);
+  useEffect(() => { catIdRef.current = selectedCatId; }, [selectedCatId]);
+
   const loadCategories = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
       const cats = await catalogueApi.getCategories();
       setCategories(cats);
-      if (cats.length > 0 && !selectedCatId) setSelectedCatId(cats[0].id);
+      if (cats.length > 0 && !catIdRef.current) setSelectedCatId(cats[0].id);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to load categories');
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, selectedCatId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   const loadParts = useCallback(async () => {
     if (!isAuthenticated) return;
+    const seq = ++partsSeq.current;
     setPartsLoading(true);
     try {
       const p = await catalogueApi.getParts({
         category_id: selectedCatId || undefined,
         search: search.trim() || undefined,
       });
+      if (seq !== partsSeq.current) return; // discard stale result
       setParts(p);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Failed to load parts');
+      if (seq === partsSeq.current) setError(e instanceof ApiError ? e.message : 'Failed to load parts');
     } finally {
-      setPartsLoading(false);
+      if (seq === partsSeq.current) setPartsLoading(false);
     }
   }, [isAuthenticated, selectedCatId, search]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { void loadCategories(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void loadCategories(); }, [loadCategories]); // re-fires when isAuthenticated changes
   useEffect(() => { if (!loading) void loadParts(); }, [selectedCatId, search, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentCat  = categories.find((c) => c.id === selectedCatId);
@@ -167,7 +178,8 @@ export function Parts() {
                 </button>
               </li>
               {categories.map((c) => (
-                <li key={c.id} className="group">
+                <li key={c.id} className="group relative">
+                  {/* Category select button — no interactive children to avoid invalid nested <button> */}
                   <button onClick={() => setSelectedCatId(c.id)}
                     className={cn('relative w-full text-left px-2.5 h-8 rounded-[var(--radius-md)] text-[13px] transition-colors flex items-center justify-between',
                       selectedCatId === c.id ? 'bg-[var(--color-accent-subtle)] text-[var(--color-accent-active)] font-medium' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]')}>
@@ -176,16 +188,15 @@ export function Parts() {
                       {c.icon && <span className="text-[14px]">{c.icon}</span>}
                       {c.name}
                     </span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[11px] tabular text-[var(--color-text-tertiary)]">{c.parts_count}</span>
-                      {isAdmin && (
-                        <span className="hidden group-hover:flex items-center gap-0.5 ml-1" onClick={(e) => e.stopPropagation()}>
-                          <button onClick={() => setCatModal(c)} title="Edit" className="w-5 h-5 inline-flex items-center justify-center rounded text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"><Pencil className="w-3 h-3" /></button>
-                          <button onClick={() => setDeleteTarget({ type: 'category', item: c })} title="Delete" className="w-5 h-5 inline-flex items-center justify-center rounded text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-bg)]"><Trash2 className="w-3 h-3" /></button>
-                        </span>
-                      )}
-                    </div>
+                    <span className="text-[11px] tabular text-[var(--color-text-tertiary)] group-hover:hidden">{c.parts_count}</span>
                   </button>
+                  {/* Edit / Delete — siblings of the button, absolutely positioned to avoid nested <button> */}
+                  {isAdmin && (
+                    <span className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-0.5">
+                      <button onClick={() => setCatModal(c)} title="Edit" className="w-5 h-5 inline-flex items-center justify-center rounded text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"><Pencil className="w-3 h-3" /></button>
+                      <button onClick={() => setDeleteTarget({ type: 'category', item: c })} title="Delete" className="w-5 h-5 inline-flex items-center justify-center rounded text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-bg)]"><Trash2 className="w-3 h-3" /></button>
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -268,6 +279,7 @@ export function Parts() {
             else await catalogueApi.updateCategory((catModal as Category).id, data);
             setCatModal(null);
             await loadCategories();
+            await loadParts();
           }}
         />
       )}
@@ -295,11 +307,15 @@ export function Parts() {
           onClose={() => setDeleteTarget(null)}
           onConfirm={async () => {
             if (deleteTarget.type === 'category') {
-              await catalogueApi.deleteCategory(deleteTarget.item.id);
+              // Always refresh categories, even if the delete throws (e.g. 404 from
+              // a double-tap) so the sidebar never stays out of sync with the server.
+              await catalogueApi.deleteCategory(deleteTarget.item.id)
+                .catch((err) => { void loadCategories(); throw err; });
               if (selectedCatId === deleteTarget.item.id) setSelectedCatId('');
-              await loadCategories();
+              await loadCategories(); // useEffect will fire loadParts if selection changed
             } else {
-              await catalogueApi.deletePart(deleteTarget.item.id);
+              await catalogueApi.deletePart(deleteTarget.item.id)
+                .catch((err) => { void loadCategories().then(() => loadParts()); throw err; });
               await loadCategories();
               await loadParts();
             }
