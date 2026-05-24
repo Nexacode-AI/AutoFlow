@@ -11,7 +11,7 @@ import { Card, CardLabel } from '@/design/primitives/Card';
 import { Badge } from '@/design/primitives/Badge';
 import { Dialog } from '@/design/primitives/Dialog';
 import { cn } from '@/lib/cn';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore } from '@/lib/auth/useAuthStore';
 import { catalogueApi, type Category, type CataloguePart } from '@/services/catalogue';
 import { ApiError } from '@/lib/api';
 
@@ -32,10 +32,9 @@ function WarrantyLabel({ months }: { months: number }) {
 // ── Main Component ─────────────────────────────────────────────────────────
 
 export function Parts() {
-  const token = useAuthStore((s) => s.token);
-  const user  = useAuthStore((s) => s.user);
+  const user          = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isAdmin = user?.role === 'super_admin' || user?.role === 'admin';
-  const api = token ? catalogueApi(token) : null;
 
   const [categories, setCategories]     = useState<Category[]>([]);
   const [parts, setParts]               = useState<CataloguePart[]>([]);
@@ -52,9 +51,9 @@ export function Parts() {
   >(null);
 
   const loadCategories = useCallback(async () => {
-    if (!api) return;
+    if (!isAuthenticated) return;
     try {
-      const cats = await api.getCategories();
+      const cats = await catalogueApi.getCategories();
       setCategories(cats);
       if (cats.length > 0 && !selectedCatId) setSelectedCatId(cats[0].id);
     } catch (e) {
@@ -62,13 +61,13 @@ export function Parts() {
     } finally {
       setLoading(false);
     }
-  }, [api, selectedCatId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, selectedCatId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadParts = useCallback(async () => {
-    if (!api) return;
+    if (!isAuthenticated) return;
     setPartsLoading(true);
     try {
-      const p = await api.getParts({
+      const p = await catalogueApi.getParts({
         category_id: selectedCatId || undefined,
         search: search.trim() || undefined,
       });
@@ -78,7 +77,7 @@ export function Parts() {
     } finally {
       setPartsLoading(false);
     }
-  }, [api, selectedCatId, search]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, selectedCatId, search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { void loadCategories(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (!loading) void loadParts(); }, [selectedCatId, search, loading]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -86,7 +85,7 @@ export function Parts() {
   const currentCat  = categories.find((c) => c.id === selectedCatId);
   const totalParts  = categories.reduce((s, c) => s + c.parts_count, 0);
 
-  if (!token) {
+  if (!isAuthenticated) {
     return (
       <div className="flex items-center justify-center h-full py-24">
         <p className="text-[13px] text-[var(--color-text-tertiary)]">Please sign in to view the parts catalogue.</p>
@@ -265,9 +264,8 @@ export function Parts() {
           allNames={categories.map((c) => c.name)}
           onClose={() => setCatModal(null)}
           onSave={async (data) => {
-            if (!api) return;
-            if (catModal === 'create') await api.createCategory(data);
-            else await api.updateCategory((catModal as Category).id, data);
+            if (catModal === 'create') await catalogueApi.createCategory(data);
+            else await catalogueApi.updateCategory((catModal as Category).id, data);
             setCatModal(null);
             await loadCategories();
           }}
@@ -282,9 +280,8 @@ export function Parts() {
           defaultCategoryId={selectedCatId || categories[0]?.id || ''}
           onClose={() => setPartModal(null)}
           onSave={async (data) => {
-            if (!api) return;
-            if (partModal === 'create') await api.createPart(data as Parameters<typeof api.createPart>[0]);
-            else await api.updatePart((partModal as CataloguePart).id, data);
+            if (partModal === 'create') await catalogueApi.createPart(data as Parameters<typeof catalogueApi.createPart>[0]);
+            else await catalogueApi.updatePart((partModal as CataloguePart).id, data);
             setPartModal(null);
             await loadCategories();
             await loadParts();
@@ -297,13 +294,12 @@ export function Parts() {
           target={deleteTarget}
           onClose={() => setDeleteTarget(null)}
           onConfirm={async () => {
-            if (!api) return;
             if (deleteTarget.type === 'category') {
-              await api.deleteCategory(deleteTarget.item.id);
+              await catalogueApi.deleteCategory(deleteTarget.item.id);
               if (selectedCatId === deleteTarget.item.id) setSelectedCatId('');
               await loadCategories();
             } else {
-              await api.deletePart(deleteTarget.item.id);
+              await catalogueApi.deletePart(deleteTarget.item.id);
               await loadCategories();
               await loadParts();
             }

@@ -1,11 +1,12 @@
 /**
  * Thin fetch wrapper for the AutoFlow REST API.
- * Throws an Error with the server's detail message on non-2xx responses.
+ * Automatically reads the JWT token from dev's auth storage.
+ * Throws ApiError with the server's detail message on non-2xx responses.
  */
+import { getToken } from '@/lib/auth/storage';
 
 const API_BASE: string =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (import.meta as any).env?.VITE_API_URL ?? 'http://localhost:8000';
+  import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
 export class ApiError extends Error {
   constructor(
@@ -19,9 +20,10 @@ export class ApiError extends Error {
 
 export async function apiFetch<T>(
   path: string,
-  options?: RequestInit & { token?: string },
+  options?: RequestInit,
 ): Promise<T> {
-  const { token, headers: extraHeaders, ...rest } = options ?? {};
+  const { headers: extraHeaders, ...rest } = options ?? {};
+  const token = getToken();
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
