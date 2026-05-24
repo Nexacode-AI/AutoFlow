@@ -8,7 +8,6 @@ User CRUD lives under /users (see users.py).
 """
 from fastapi import APIRouter
 from sqlalchemy import func, select
-from sqlalchemy.orm import selectinload
 
 from app.api.dependencies import DbSession, RequireAdmin, RequireSuperAdmin
 from app.infrastructure.models.models import Role, User
