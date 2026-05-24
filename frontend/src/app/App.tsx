@@ -8,9 +8,12 @@ import { Finance } from '@/features/finance/Finance';
 import { Reports } from '@/features/reports/Reports';
 import { SettingsPage } from '@/features/settings/Settings';
 import { Login } from '@/features/public/Login';
+import { ForgotPassword } from '@/features/public/ForgotPassword';
+import { ResetPassword } from '@/features/public/ResetPassword';
 import { CustomerApproval } from '@/features/public/CustomerApproval';
 import { CustomerFeedback } from '@/features/public/CustomerFeedback';
 import { PrimitivesShowcase } from './_dev/PrimitivesShowcase';
+import { ProtectedRoute } from '@/lib/auth/ProtectedRoute';
 
 export function App() {
   return (
@@ -18,11 +21,13 @@ export function App() {
       <Routes>
         {/* Public routes (no shell) */}
         <Route path="/login"            element={<Login />} />
+        <Route path="/forgot-password"  element={<ForgotPassword />} />
+        <Route path="/reset-password"   element={<ResetPassword />} />
         <Route path="/client-approval"  element={<CustomerApproval />} />
         <Route path="/client-feedback"  element={<CustomerFeedback />} />
 
-        {/* App shell */}
-        <Route element={<Shell />}>
+        {/* Protected routes (require authentication) */}
+        <Route element={<ProtectedRoute><Shell /></ProtectedRoute>}>
           <Route path="/"           element={<Dashboard />} />
           <Route path="/jobs"       element={<JobBoard />} />
           <Route path="/jobs/:code" element={<RepairOrder />} />

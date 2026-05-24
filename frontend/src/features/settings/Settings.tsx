@@ -1,19 +1,26 @@
 import { useState } from 'react';
-import { Settings as Cog, Workflow, AlertCircle } from 'lucide-react';
+import { Settings as Cog, Workflow, AlertCircle, Users } from 'lucide-react';
 import { Button } from '@/design/primitives/Button';
 import { PageHeader } from '@/design/primitives/PageHeader';
 import { Card, CardLabel } from '@/design/primitives/Card';
 import { Field, Input } from '@/design/primitives/Input';
 import { Tabs } from '@/design/primitives/Tabs';
-
-const TABS = [
-  { value: 'workshop', label: 'Workshop' },
-  { value: 'workflow', label: 'Workflow' },
-  { value: 'danger',   label: 'Danger zone' },
-] as const;
-type Tab = (typeof TABS)[number]['value'];
+import { useAuthStore } from '@/lib/auth/useAuthStore';
+import { UserManagement } from './UserManagement';
 
 export function SettingsPage() {
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  // Build tabs based on user role
+  const TABS = [
+    { value: 'workshop', label: 'Workshop' },
+    { value: 'workflow', label: 'Workflow' },
+    ...(isSuperAdmin ? [{ value: 'users', label: 'Users' }] : []),
+    { value: 'danger', label: 'Danger zone' },
+  ] as const;
+  type Tab = (typeof TABS)[number]['value'];
+
   const [tab, setTab] = useState<Tab>('workshop');
 
   return (
@@ -82,6 +89,10 @@ export function SettingsPage() {
             <Button variant="primary">Save configuration</Button>
           </div>
         </Card>
+      )}
+
+      {tab === 'users' && isSuperAdmin && (
+        <UserManagement />
       )}
 
       {tab === 'danger' && (

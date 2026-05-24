@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 12  # 12 hours
 
+    # ── Frontend ──
+    FRONTEND_URL: str = "http://localhost:5174"
+
     # ── CORS (comma-separated origins) ──
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:5174"
 

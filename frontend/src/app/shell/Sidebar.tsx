@@ -1,22 +1,53 @@
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import {
   LayoutGrid, ClipboardList, Package, Wallet, BarChart3,
-  Settings, ChevronsLeft, ChevronsRight, Car,
+  Settings, ChevronsLeft, ChevronsRight, Car, LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { useAuthStore } from '@/lib/auth/useAuthStore';
 
 interface Props { collapsed: boolean; onToggle: () => void; }
 
 const NAV = [
-  { to: '/',          label: 'Dashboard',  icon: LayoutGrid,    end: true  },
-  { to: '/jobs',      label: 'Job Board',  icon: ClipboardList, end: false },
-  { to: '/parts',     label: 'Parts',      icon: Package,       end: false },
-  { to: '/finance',   label: 'Finance',    icon: Wallet,        end: false },
-  { to: '/reports',   label: 'Reports',    icon: BarChart3,     end: false },
-  { to: '/settings',  label: 'Settings',   icon: Settings,      end: false },
+  { to: '/',          label: 'Dashboard',  icon: LayoutGrid,    end: true,  minRole: 'bay' },
+  { to: '/jobs',      label: 'Job Board',  icon: ClipboardList, end: false, minRole: 'bay' },
+  { to: '/parts',     label: 'Parts',      icon: Package,       end: false, minRole: 'bay' },
+  { to: '/finance',   label: 'Finance',    icon: Wallet,        end: false, minRole: 'admin' },
+  { to: '/reports',   label: 'Reports',    icon: BarChart3,     end: false, minRole: 'admin' },
+  { to: '/settings',  label: 'Settings',   icon: Settings,      end: false, minRole: 'bay' },
 ];
 
+// Role hierarchy for filtering
+const ROLE_LEVELS: Record<string, number> = {
+  bay: 1,
+  admin: 2,
+  super_admin: 3,
+};
+
 export function Sidebar({ collapsed, onToggle }: Props) {
+  const nav = useNavigate();
+  const { user, logout } = useAuthStore();
+
+  // Filter navigation items based on user role
+  const userRoleLevel = ROLE_LEVELS[user?.role || 'bay'] || 1;
+  const visibleNav = NAV.filter((item) => {
+    const requiredLevel = ROLE_LEVELS[item.minRole] || 1;
+    return userRoleLevel >= requiredLevel;
+  });
+
+  const handleLogout = async () => {
+    await logout();
+    nav('/login');
+  };
+
+  // Get user initials for avatar
+  const initials = user?.name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || '??';
+
   return (
     <aside
       style={{ width: collapsed ? 56 : 240 }}
@@ -48,7 +79,7 @@ export function Sidebar({ collapsed, onToggle }: Props) {
             Operations
           </p>
         )}
-        {NAV.map(item => (
+        {visibleNav.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -90,20 +121,39 @@ export function Sidebar({ collapsed, onToggle }: Props) {
           {collapsed ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
           {!collapsed && <span>Collapse</span>}
         </button>
+
+        {/* User info */}
         <div className={cn(
           'flex items-center gap-2 h-9 rounded-[var(--radius-md)]',
           collapsed ? 'justify-center' : 'px-2.5',
         )}>
           <div className="w-6 h-6 rounded-full bg-[var(--color-accent)] text-white flex items-center justify-center text-[10px] font-semibold shrink-0">
-            SA
+            {initials}
           </div>
           {!collapsed && (
-            <div className="min-w-0 leading-tight">
-              <p className="text-[12px] font-medium text-[var(--color-text-primary)] truncate">Sarah Lee</p>
-              <p className="text-[10px] text-[var(--color-text-tertiary)] truncate">Service Advisor</p>
+            <div className="min-w-0 flex-1 leading-tight">
+              <p className="text-[12px] font-medium text-[var(--color-text-primary)] truncate">
+                {user?.name || 'Unknown'}
+              </p>
+              <p className="text-[10px] text-[var(--color-text-tertiary)] truncate">
+                {user?.role || 'No role'}
+              </p>
             </div>
           )}
         </div>
+
+        {/* Logout button */}
+        <button
+          onClick={handleLogout}
+          title="Logout"
+          className={cn(
+            'flex items-center gap-2.5 w-full h-8 rounded-[var(--radius-md)] text-[12px] text-[var(--color-text-tertiary)] hover:bg-red-50 hover:text-red-600 transition-colors',
+            collapsed ? 'justify-center px-0' : 'px-2.5',
+          )}
+        >
+          <LogOut className="w-4 h-4" />
+          {!collapsed && <span>Logout</span>}
+        </button>
       </div>
     </aside>
   );
