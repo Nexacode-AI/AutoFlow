@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # ── CORS (comma-separated origins) ──
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:5174"
 
+    # ── File uploads (Issue #20 — bank statement PDFs) ──
+    UPLOAD_DIR: str = "./uploads"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
