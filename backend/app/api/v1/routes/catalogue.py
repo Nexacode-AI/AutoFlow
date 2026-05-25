@@ -257,6 +257,7 @@ async def delete_category(category_id: str, db: DbSession, _=_admin) -> None:
         select(func.count(PartsCatalogue.catalogue_id))
         .where(PartsCatalogue.category_id == category_id)
         .where(PartsCatalogue.deleted_at.is_(None))
+        .where(PartsCatalogue.is_active == True)  # noqa: E712
     )
     if linked and linked > 0:
         raise HTTPException(
