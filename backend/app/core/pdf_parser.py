@@ -145,7 +145,7 @@ def _parse_pdf_sync(pdf_path: str) -> list[dict]:
 
     try:
         with pdfplumber.open(pdf_path) as pdf:
-            for page_num, page in enumerate(pdf.pages, start=1):
+            for _page_num, page in enumerate(pdf.pages, start=1):
                 # Strategy 1: table extraction
                 tables = page.extract_tables()
                 if tables:

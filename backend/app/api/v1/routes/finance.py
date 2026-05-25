@@ -223,7 +223,7 @@ async def list_transactions(
                 PersonalExpense.category == PersonalExpenseCategory(category)
             )
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Unknown category: {category}")
+            raise HTTPException(status_code=400, detail=f"Unknown category: {category}") from None
 
     query = query.order_by(PersonalExpense.transaction_date.desc())
     result = await db.execute(query)
