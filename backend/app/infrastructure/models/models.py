@@ -34,8 +34,8 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.base import (
-    Base,
     BankStatementStatus,
+    Base,
     MediaType,
     NotificationTrigger,
     NotificationType,
