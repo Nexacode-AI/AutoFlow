@@ -55,6 +55,11 @@ class StepStatus(enum.StrEnum):
 # Parts & Orders
 # ──────────────────────────────────────────────
 
+class PartGrade(enum.StrEnum):
+    ORI = "ORI"  # Original/genuine manufacturer part — 12-month warranty
+    OM = "OM"    # Alternative/aftermarket part — 6-month warranty
+
+
 class PartAvailability(enum.StrEnum):
     AVAILABLE = "available"
     ON_ORDER = "on_order"

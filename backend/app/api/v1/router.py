@@ -7,13 +7,14 @@ Each feature owner (P1–P7) adds their route module here:
 """
 from fastapi import APIRouter
 
-from app.api.v1.routes import admin, auth, users
+from app.api.v1.routes import admin, auth, catalogue, users
 
 api_router = APIRouter()
 
 api_router.include_router(auth.router)
 api_router.include_router(admin.router)
 api_router.include_router(users.router)
+api_router.include_router(catalogue.router)
 
 # ── Feature routers — added by P1–P7 as slices land ──
 # api_router.include_router(workflows.router)   # P1 / P2

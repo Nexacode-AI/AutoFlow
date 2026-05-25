@@ -42,6 +42,7 @@ from app.infrastructure.base import (
     NotificationType,
     OrderStatus,
     PartAvailability,
+    PartGrade,
     PaymentMethod,
     QCResult,
     QuotationStatus,
@@ -381,10 +382,15 @@ class PartCategory(Base):
     )
     category_name: Mapped[str] = mapped_column(String(100), unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    icon: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # relationships
     parts: Mapped[list["Part"]] = relationship("Part", back_populates="category")
+    catalogue_parts: Mapped[list["PartsCatalogue"]] = relationship(
+        "PartsCatalogue", back_populates="category"
+    )
 
     def __repr__(self) -> str:
         return f"<PartCategory {self.category_name}>"
@@ -431,6 +437,42 @@ class Part(Base):
 
     def __repr__(self) -> str:
         return f"<Part {self.part_code}: {self.part_name}>"
+
+
+# ──────────────────────────────────────────────
+# 9b. PARTS CATALOGUE
+# ──────────────────────────────────────────────
+
+class PartsCatalogue(Base):
+    """
+    Admin-managed parts catalogue.
+    Staff browse this when selecting parts during diagnosis (Step 7).
+    Soft-deleted via deleted_at to preserve history on past jobs.
+    """
+    __tablename__ = "parts_catalogue"
+
+    catalogue_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=_uuid
+    )
+    category_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("part_categories.category_id")
+    )
+    name: Mapped[str] = mapped_column(String(150))
+    grade: Mapped[PartGrade] = mapped_column(
+        SAEnum(PartGrade, name="part_grade"), nullable=False
+    )
+    warranty_months: Mapped[int] = mapped_column(Integer, default=12)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+    # relationships
+    category: Mapped["PartCategory"] = relationship(
+        "PartCategory", back_populates="catalogue_parts"
+    )
+
+    def __repr__(self) -> str:
+        return f"<PartsCatalogue {self.name} ({self.grade})>"
 
 
 # ──────────────────────────────────────────────

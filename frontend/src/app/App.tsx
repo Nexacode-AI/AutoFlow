@@ -1,19 +1,19 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Shell } from './shell/Shell';
-import { Dashboard } from '@/features/dashboard/Dashboard';
-import { JobBoard } from '@/features/jobs/JobBoard';
-import { RepairOrder } from '@/features/jobs/repair-order/RepairOrder';
-import { Parts } from '@/features/parts/Parts';
-import { Finance } from '@/features/finance/Finance';
-import { Reports } from '@/features/reports/Reports';
-import { SettingsPage } from '@/features/settings/Settings';
-import { Login } from '@/features/public/Login';
-import { ForgotPassword } from '@/features/public/ForgotPassword';
-import { ResetPassword } from '@/features/public/ResetPassword';
-import { CustomerApproval } from '@/features/public/CustomerApproval';
-import { CustomerFeedback } from '@/features/public/CustomerFeedback';
-import { PrimitivesShowcase } from './_dev/PrimitivesShowcase';
-import { ProtectedRoute } from '@/lib/auth/ProtectedRoute';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Shell } from "./shell/Shell";
+import { Dashboard } from "@/features/dashboard/Dashboard";
+import { JobBoard } from "@/features/jobs/JobBoard";
+import { RepairOrder } from "@/features/jobs/repair-order/RepairOrder";
+import { Parts } from "@/features/parts/Parts";
+import { Finance } from "@/features/finance/Finance";
+import { Reports } from "@/features/reports/Reports";
+import { SettingsPage } from "@/features/settings/Settings";
+import { Login } from "@/features/public/Login";
+import { ForgotPassword } from "@/features/public/ForgotPassword";
+import { ResetPassword } from "@/features/public/ResetPassword";
+import { CustomerApproval } from "@/features/public/CustomerApproval";
+import { CustomerFeedback } from "@/features/public/CustomerFeedback";
+import { PrimitivesShowcase } from "./_dev/PrimitivesShowcase";
+import { ProtectedRoute } from "@/lib/auth/ProtectedRoute";
 
 export function App() {
   return (
