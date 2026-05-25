@@ -37,6 +37,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.base import (
     Base,
+    BankStatementStatus,
     MediaType,
     NotificationTrigger,
     NotificationType,
@@ -44,6 +45,7 @@ from app.infrastructure.base import (
     PartAvailability,
     PartGrade,
     PaymentMethod,
+    PersonalExpenseCategory,
     QCResult,
     QuotationStatus,
     StepStatus,
@@ -1016,3 +1018,84 @@ class PasswordResetToken(Base):
 
     def __repr__(self) -> str:
         return f"<PasswordResetToken user={self.user_id} expires={self.expires_at}>"
+
+
+# ──────────────────────────────────────────────
+# 23. BANK STATEMENTS (Issue #20)
+# ──────────────────────────────────────────────
+
+class BankStatement(Base):
+    """
+    One uploaded bank statement PDF per admin per period.
+    After upload the PDF is parsed into PersonalExpense rows.
+    The original file is kept on disk for audit purposes.
+    """
+    __tablename__ = "bank_statements"
+
+    statement_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=_uuid
+    )
+    admin_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.user_id")
+    )
+    filename: Mapped[str] = mapped_column(String(255))
+    file_path: Mapped[str] = mapped_column(Text)
+    status: Mapped[BankStatementStatus] = mapped_column(
+        SAEnum(BankStatementStatus, name="bank_statement_status"),
+        default=BankStatementStatus.PROCESSING,
+    )
+    transaction_count: Mapped[int] = mapped_column(Integer, default=0)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+    # relationships
+    admin: Mapped["User"] = relationship("User", foreign_keys=[admin_id])
+    expenses: Mapped[list["PersonalExpense"]] = relationship(
+        "PersonalExpense", back_populates="statement", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<BankStatement admin={self.admin_id} file={self.filename} status={self.status}>"
+
+
+# ──────────────────────────────────────────────
+# 24. PERSONAL EXPENSES (Issue #20)
+# ──────────────────────────────────────────────
+
+class PersonalExpense(Base):
+    """
+    One row per transaction extracted from a bank statement PDF.
+    Auto-categorized on creation; admin can recategorize at any time.
+    Only admin and super_admin roles can view personal expenses.
+    """
+    __tablename__ = "personal_expenses"
+
+    expense_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=_uuid
+    )
+    statement_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("bank_statements.statement_id")
+    )
+    admin_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.user_id")
+    )
+    transaction_date: Mapped[datetime] = mapped_column(DateTime)
+    description: Mapped[str] = mapped_column(Text)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    category: Mapped[PersonalExpenseCategory] = mapped_column(
+        SAEnum(PersonalExpenseCategory, name="personal_expense_category"),
+        default=PersonalExpenseCategory.OTHERS,
+    )
+    is_recategorized: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+    # relationships
+    statement: Mapped["BankStatement"] = relationship(
+        "BankStatement", back_populates="expenses"
+    )
+    admin: Mapped["User"] = relationship("User", foreign_keys=[admin_id])
+
+    def __repr__(self) -> str:
+        return (
+            f"<PersonalExpense admin={self.admin_id} "
+            f"amount={self.amount} cat={self.category}>"
+        )
