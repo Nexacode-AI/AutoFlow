@@ -22,16 +22,13 @@ from app.infrastructure.models.models import (
     PartCategory,
     PartsCatalogue,
     Role,
+    Supplier,
     User,
     WorkflowStepDefinition,
 )
 from app.infrastructure.session import AsyncSessionLocal, init_db
 
 logger = logging.getLogger(__name__)
-
-# Default starter account — change the password after first login.
-ADMIN_EMAIL = "admin@autoflow.local"
-ADMIN_PASSWORD = "admin123"
 
 ROLES = [
     (UserRole.SUPER_ADMIN, "Full system access"),
@@ -98,21 +95,27 @@ async def seed() -> None:
                 )
                 logger.info("+ step %02d: %s", num, name)
 
-        # ── Starter super-admin ──
-        admin = await db.scalar(select(User).where(User.email == ADMIN_EMAIL))
-        if not admin:
-            super_role = await db.scalar(
-                select(Role).where(Role.role_name == UserRole.SUPER_ADMIN)
-            )
-            db.add(
-                User(
-                    name="System Admin",
-                    email=ADMIN_EMAIL,
-                    password_hash=hash_password(ADMIN_PASSWORD),
-                    role_id=super_role.role_id,
+        # ── Starter accounts (one per role) ──
+        SEED_USERS = [
+            ("System Admin",    "admin@autoflow.local", "admin123",  UserRole.SUPER_ADMIN),
+            ("Workshop Admin",  "admin2@autoflow.local", "admin123",     UserRole.ADMIN),
+            ("Bay Team",        "bay@autoflow.local",    "bay123",       UserRole.BAY),
+        ]
+        for full_name, email, password, role_name in SEED_USERS:
+            exists = await db.scalar(select(User).where(User.email == email))
+            if not exists:
+                role_row = await db.scalar(
+                    select(Role).where(Role.role_name == role_name)
                 )
-            )
-            logger.info("+ user: %s (password: %s)", ADMIN_EMAIL, ADMIN_PASSWORD)
+                db.add(
+                    User(
+                        name=full_name,
+                        email=email,
+                        password_hash=hash_password(password),
+                        role_id=role_row.role_id,
+                    )
+                )
+                logger.info("+ user: %s / %s  (role: %s)", email, password, role_name.value)
 
         await db.flush()
 
@@ -197,6 +200,38 @@ async def seed() -> None:
                     warranty_months=warranty,
                 ))
                 logger.info("+ catalogue part: %s (%s)", part_name, grade.value)
+
+        # ── Suppliers ──
+        SEED_SUPPLIERS = [
+            {
+                "supplier_name": "Suan Huat Auto Parts",
+                "phone": "0123456789",
+                "whatsapp_number": "60123456789",
+                "email": "suanhuat@example.com",
+                "notes": "Best pricing for brakes and electrical. Cash on delivery.",
+            },
+            {
+                "supplier_name": "Stuttgart Auto",
+                "phone": "0198765432",
+                "whatsapp_number": "60198765432",
+                "email": "stuttgart@example.com",
+                "notes": "ORI parts specialist. 1–2 day lead time for engine components.",
+            },
+            {
+                "supplier_name": "Bavaria Motor Parts",
+                "phone": "0187654321",
+                "whatsapp_number": "60187654321",
+                "email": "bavaria@example.com",
+                "notes": "Good for AC and suspension. Accepts 30-day credit terms.",
+            },
+        ]
+        for s in SEED_SUPPLIERS:
+            exists = await db.scalar(
+                select(Supplier).where(Supplier.supplier_name == s["supplier_name"])
+            )
+            if not exists:
+                db.add(Supplier(**s))
+                logger.info("+ supplier: %s", s["supplier_name"])
 
         await db.commit()
 

@@ -1,7 +1,7 @@
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import {
   LayoutGrid, ClipboardList, Package, Wallet, BarChart3,
-  Settings, ChevronsLeft, ChevronsRight, Car, LogOut,
+  Settings, ChevronsLeft, ChevronsRight, Car, LogOut, Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/lib/auth/useAuthStore';
@@ -11,8 +11,9 @@ interface Props { collapsed: boolean; onToggle: () => void; }
 const NAV = [
   { to: '/',          label: 'Dashboard',  icon: LayoutGrid,    end: true,  minRole: 'bay' },
   { to: '/jobs',      label: 'Job Board',  icon: ClipboardList, end: false, minRole: 'bay' },
-  { to: '/parts',     label: 'Parts',      icon: Package,       end: false, minRole: 'bay' },
-  { to: '/finance',   label: 'Finance',    icon: Wallet,        end: false, minRole: 'admin' },
+  { to: '/parts',      label: 'Parts',      icon: Package,  end: false, minRole: 'bay' },
+  { to: '/suppliers', label: 'Suppliers',  icon: Truck,    end: false, minRole: 'admin' },
+  { to: '/finance',   label: 'Finance',    icon: Wallet,   end: false, minRole: 'admin' },
   { to: '/reports',   label: 'Reports',    icon: BarChart3,     end: false, minRole: 'admin' },
   { to: '/settings',  label: 'Settings',   icon: Settings,      end: false, minRole: 'bay' },
 ];

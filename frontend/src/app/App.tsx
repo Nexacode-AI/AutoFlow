@@ -4,6 +4,7 @@ import { Dashboard } from "@/features/dashboard/Dashboard";
 import { JobBoard } from "@/features/jobs/JobBoard";
 import { RepairOrder } from "@/features/jobs/repair-order/RepairOrder";
 import { Parts } from "@/features/parts/Parts";
+import { Suppliers } from "@/features/suppliers/Suppliers";
 import { Finance } from "@/features/finance/Finance";
 import { Reports } from "@/features/reports/Reports";
 import { SettingsPage } from "@/features/settings/Settings";
@@ -33,6 +34,7 @@ export function App() {
           <Route path="/jobs/:code" element={<RepairOrder />} />
           <Route path="/jobs/new"   element={<RepairOrder />} />
           <Route path="/parts"      element={<Parts />} />
+          <Route path="/suppliers"  element={<Suppliers />} />
           <Route path="/finance"    element={<Finance />} />
           <Route path="/reports"    element={<Reports />} />
           <Route path="/settings"   element={<SettingsPage />} />
