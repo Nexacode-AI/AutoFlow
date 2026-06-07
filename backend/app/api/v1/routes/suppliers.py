@@ -11,7 +11,7 @@ import re
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, field_validator
 from sqlalchemy import func, select
 
 from app.api.dependencies import DbSession, require_roles
@@ -141,7 +141,9 @@ async def list_suppliers(
     db: DbSession,
     user=_admin,
     search: str | None = Query(None, description="Filter by supplier name (case-insensitive)"),
-    include_inactive: bool = Query(False, description="Include deactivated suppliers (super_admin only)"),
+    include_inactive: bool = Query(
+        False, description="Include deactivated suppliers (super_admin only)"
+    ),
 ) -> list[SupplierOut]:
     """List suppliers. Default: active only. super_admin can pass include_inactive=true."""
     stmt = select(Supplier).order_by(Supplier.is_active.desc(), Supplier.supplier_name)
