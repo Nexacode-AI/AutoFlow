@@ -63,12 +63,22 @@ make seed                           # roles + step definitions + admin user
 make dev                            # http://localhost:8000/docs
 ```
 
-## Default login
+## Default login accounts
 
-After `make seed`:
+After `make seed`, three accounts are created — one per role:
 
-- **Email:** `admin@autoflow.local`
-- **Password:** `admin123`  *(change after first login)*
+| Role | Email | Password |
+|---|---|---|
+| `super_admin` | `admin@autoflow.local` | `admin123` |
+| `admin` | `admin2@autoflow.local` | `admin123` |
+| `bay` | `bay@autoflow.local` | `bay123` |
+
+> Change passwords after first login. All accounts are idempotent — re-running `make seed` will not create duplicates.
+
+**Role capabilities at a glance:**
+- `super_admin` — full access, sees all financials, can manage all users and suppliers
+- `admin` — workflow oversight, supplier management, quotations, payments (no P&L view)
+- `bay` — mechanic/service advisor: inspection, diagnosis, repair steps (no supplier or finance access)
 
 ## Common commands
 

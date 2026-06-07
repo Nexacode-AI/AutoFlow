@@ -27,6 +27,10 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 async def init_db():
+    # create_all() is safe to call on every startup — it is a no-op for tables
+    # that already exist. However it only CREATES tables; it never alters them.
+    # New columns / schema changes on existing tables require an Alembic migration:
+    #   make migrate   →   alembic upgrade head
     try:
         logger.info("▶ Starting database initialization...")
         logger.info("▶ Creating tables from metadata...")

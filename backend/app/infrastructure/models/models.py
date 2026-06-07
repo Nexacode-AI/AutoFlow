@@ -531,7 +531,10 @@ class Supplier(Base):
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     whatsapp_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     email: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
     # relationships
     enquiries: Mapped[list["SupplierEnquiry"]] = relationship(
