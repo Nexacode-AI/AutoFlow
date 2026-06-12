@@ -1,37 +1,21 @@
 /**
  * Finance API client — Personal Expenses (Issue #20)
  *
- * All calls are admin-only and use the bearer token from auth storage.
- * Base URL and prefix are shared with the auth API client pattern.
+ * JSON endpoints go through the shared apiFetch wrapper; the multipart
+ * upload uses its own fetch (the browser must set the multipart boundary,
+ * so the JSON Content-Type from apiFetch can't be used) but reuses ApiError
+ * for consistent error handling.
+ *
+ * All endpoints are admin-only. Regular admins only ever see their own
+ * transactions; super_admin sees everyone's.
  */
 
+import { apiFetch, ApiError } from '@/lib/api';
 import { getToken } from '@/lib/auth/storage';
 import type { PersonalCategory } from '@/data/finance';
 
-const API_BASE   = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const API_PREFIX = '/api/v1';
-
-// ── Shared fetch helper ───────────────────────────────────────────────────────
-
-function authedFetch(url: string, init: RequestInit = {}): Promise<Response> {
-  const token = getToken();
-  return fetch(url, {
-    ...init,
-    headers: {
-      ...init.headers,
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-}
-
-async function parseError(response: Response, fallback: string): Promise<never> {
-  try {
-    const body = await response.json();
-    throw new Error(body.detail || fallback);
-  } catch {
-    throw new Error(fallback);
-  }
-}
+const API_BASE: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+const PREFIX = '/api/v1/finance/personal';
 
 // ── Response types ────────────────────────────────────────────────────────────
 
@@ -90,17 +74,27 @@ export async function uploadBankStatement(
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await authedFetch(
-    `${API_BASE}${API_PREFIX}/finance/personal/bank-statements/upload?admin_id=${encodeURIComponent(adminId)}`,
-    { method: 'POST', body: formData },
+  const token = getToken();
+  const res = await fetch(
+    `${API_BASE}${PREFIX}/bank-statements/upload?admin_id=${encodeURIComponent(adminId)}`,
+    {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    },
   );
-  if (!response.ok) return parseError(response, 'Failed to upload bank statement');
-  return response.json();
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new ApiError(res.status, (body as { detail?: string }).detail ?? 'Upload failed');
+  }
+  return res.json();
 }
 
 /**
- * Fetch all personal expense transactions.
- * Optionally filter by adminId or category.
+ * Fetch personal expense transactions.
+ * Regular admins receive only their own; super_admin may pass adminId or
+ * omit filters to receive everything.
  */
 export async function listTransactions(filters?: {
   adminId?: string;
@@ -111,11 +105,7 @@ export async function listTransactions(filters?: {
   if (filters?.category) params.append('category', filters.category);
 
   const qs = params.toString();
-  const response = await authedFetch(
-    `${API_BASE}${API_PREFIX}/finance/personal/transactions${qs ? `?${qs}` : ''}`,
-  );
-  if (!response.ok) return parseError(response, 'Failed to fetch transactions');
-  return response.json();
+  return apiFetch<TransactionResponse[]>(`${PREFIX}/transactions${qs ? `?${qs}` : ''}`);
 }
 
 /**
@@ -126,25 +116,16 @@ export async function recategorizeTransaction(
   expenseId: string,
   category: PersonalCategory,
 ): Promise<TransactionResponse> {
-  const response = await authedFetch(
-    `${API_BASE}${API_PREFIX}/finance/personal/transactions/${expenseId}/category`,
-    {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category }),
-    },
-  );
-  if (!response.ok) return parseError(response, 'Failed to update category');
-  return response.json();
+  return apiFetch<TransactionResponse>(`${PREFIX}/transactions/${expenseId}/category`, {
+    method: 'PATCH',
+    body: JSON.stringify({ category }),
+  });
 }
 
 /**
- * Get aggregated spending summary — category totals and per-admin breakdown.
+ * Get aggregated spending summary — combined category totals and per-admin
+ * breakdown (totals only; line items stay private to each owner).
  */
 export async function getSummary(): Promise<SummaryResponse> {
-  const response = await authedFetch(
-    `${API_BASE}${API_PREFIX}/finance/personal/summary`,
-  );
-  if (!response.ok) return parseError(response, 'Failed to fetch summary');
-  return response.json();
+  return apiFetch<SummaryResponse>(`${PREFIX}/summary`);
 }

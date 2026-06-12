@@ -96,62 +96,6 @@ export const CATEGORY_LABELS: Record<PersonalCategory, string> = {
 export const REAL_CATEGORIES = (Object.keys(CATEGORY_LABELS) as PersonalCategory[])
   .filter(c => c !== 'others');
 
-export interface PersonalTransaction {
-  id: string;
-  adminId: string;
-  adminName: string;
-  description: string;
-  amount: number;
-  category: PersonalCategory;
-  isOthers: boolean;
-  isRecategorized: boolean;
-  date: Date;
-}
-
-export const PERSONAL_EXPENSES: PersonalTransaction[] = [
-  { id: 'pe1',  adminId: '1', adminName: 'Admin 1', description: 'Monthly Unifi broadband bill',            amount: 129.00, category: 'utilities',             isOthers: false, isRecategorized: false, date: new Date('2026-04-01') },
-  { id: 'pe2',  adminId: '1', adminName: 'Admin 1', description: 'Petrol reimbursement — April',            amount: 210.00, category: 'fuel_transport',        isOthers: false, isRecategorized: false, date: new Date('2026-04-02') },
-  { id: 'pe3',  adminId: '1', adminName: 'Admin 1', description: 'Office stationery purchase',              amount: 85.50,  category: 'others',                isOthers: true,  isRecategorized: false, date: new Date('2026-04-03') },
-  { id: 'pe4',  adminId: '1', adminName: 'Admin 1', description: 'Team lunch — workshop staff',             amount: 310.00, category: 'meals_entertainment',   isOthers: false, isRecategorized: false, date: new Date('2026-04-04') },
-  { id: 'pe5',  adminId: '1', adminName: 'Admin 1', description: 'Workshop equipment maintenance',         amount: 450.00, category: 'equipment_maintenance',  isOthers: false, isRecategorized: false, date: new Date('2026-03-28') },
-  { id: 'pe6',  adminId: '1', adminName: 'Admin 1', description: 'Staff welfare expenses',                 amount: 175.00, category: 'others',                isOthers: true,  isRecategorized: false, date: new Date('2026-03-25') },
-  { id: 'pe7',  adminId: '1', adminName: 'Admin 1', description: 'Vehicle insurance renewal',              amount: 890.00, category: 'fuel_transport',        isOthers: false, isRecategorized: false, date: new Date('2026-03-20') },
-  { id: 'pe8',  adminId: '2', adminName: 'Admin 2', description: 'Facebook & Google Ads campaign',         amount: 620.00, category: 'marketing_advertising', isOthers: false, isRecategorized: false, date: new Date('2026-04-01') },
-  { id: 'pe9',  adminId: '2', adminName: 'Admin 2', description: 'Maxis mobile bill renewal',              amount: 299.00, category: 'utilities',             isOthers: false, isRecategorized: false, date: new Date('2026-04-02') },
-  { id: 'pe10', adminId: '2', adminName: 'Admin 2', description: 'Courier charges for client documents',   amount: 45.00,  category: 'others',                isOthers: true,  isRecategorized: false, date: new Date('2026-04-03') },
-  { id: 'pe11', adminId: '2', adminName: 'Admin 2', description: 'Client entertainment dinner',            amount: 530.00, category: 'meals_entertainment',   isOthers: false, isRecategorized: false, date: new Date('2026-03-30') },
-  { id: 'pe12', adminId: '2', adminName: 'Admin 2', description: 'Automotive training workshop fee',       amount: 180.00, category: 'training_development',  isOthers: false, isRecategorized: false, date: new Date('2026-03-22') },
-  { id: 'pe13', adminId: '2', adminName: 'Admin 2', description: 'Printing and stationery supplies',       amount: 92.00,  category: 'office_stationery',     isOthers: false, isRecategorized: false, date: new Date('2026-03-18') },
-];
-
-const _CATEGORY_KEYWORDS: Record<PersonalCategory, string[]> = {
-  fuel_transport:        ['petrol', 'fuel', 'toll', 'parking', 'grab', 'ride', 'transport', 'highway', 'mileage', 'insurance'],
-  utilities:             ['internet', 'broadband', 'unifi', 'maxis', 'celcom', 'digi', 'phone', 'mobile', 'electricity', 'water', 'telco', 'bill', 'streamyx', 'astro'],
-  meals_entertainment:   ['lunch', 'dinner', 'breakfast', 'meal', 'food', 'restaurant', 'cafe', 'coffee', 'entertainment'],
-  office_stationery:     ['stationery', 'printing', 'paper', 'pen', 'ink', 'courier', 'postage', 'stamps', 'office supplies', 'binding'],
-  training_development:  ['training', 'course', 'workshop', 'seminar', 'certification', 'books', 'learning', 'education', 'conference'],
-  marketing_advertising: ['marketing', 'ads', 'advertising', 'social media', 'promotion', 'campaign', 'google ads', 'facebook', 'instagram'],
-  equipment_maintenance: ['equipment', 'tools', 'hardware', 'maintenance', 'service', 'repair', 'consumable', 'battery', 'cable'],
-  others:                [],
-};
-
-export const MOCK_BANK_ROWS = [
-  { desc: 'Workshop tools and hardware purchase',  amount: 340.00 },
-  { desc: 'Monthly Celcom phone bill payment',     amount: 88.00  },
-  { desc: 'Client meeting expenses',               amount: 215.50 },
-  { desc: 'Automotive training workshop fee',      amount: 450.00 },
-  { desc: 'Printing and stationery supplies',      amount: 67.00  },
-];
-
-export const detectCategory = (description: string): PersonalCategory => {
-  const lower = description.toLowerCase();
-  for (const [cat, keywords] of Object.entries(_CATEGORY_KEYWORDS) as [PersonalCategory, string[]][]) {
-    if (cat === 'others') continue;
-    if (keywords.some(kw => lower.includes(kw))) return cat;
-  }
-  return 'others';
-};
-
 /* ─── Profit Calculator ─── */
 
 export interface ProfitPart {

@@ -80,6 +80,23 @@ POST /api/v1/finance/personal/bank-statements/upload
 
 ---
 
+## Privacy Model
+
+- **Line items are private.** A regular `admin` only ever sees / uploads / recategorizes
+  their *own* transactions. Requesting another admin's data returns `403`.
+- **`super_admin` sees everything** and may upload statements for any admin-level user.
+- **Combined totals are shared.** The `/summary` endpoint returns category totals and
+  per-admin totals (amounts + counts only, never line items) to every admin.
+
+## Upload Security
+
+- Filenames are sanitized (`Path(...).name` + safe character set) and stored under a
+  UUID prefix — path traversal via crafted filenames is not possible.
+- File content is validated by magic bytes (`%PDF-`), not the spoofable
+  `Content-Type` header.
+- The `BankStatement` row is committed *before* parsing, so a slow PDF parse never
+  holds a DB connection open; expenses + status are committed in a second transaction.
+
 ## API Endpoints
 
 All endpoints require `admin` or `super_admin` role.  
@@ -108,8 +125,9 @@ Body:  file=<PDF>
 ```
 
 **Error cases**
+- `403` — regular admin uploading for someone else
 - `404` — admin_id not found
-- `422` — file is not a PDF, or PDF could not be parsed
+- `422` — target user is not an admin, file is not a real PDF (magic-byte check), or PDF could not be parsed
 
 ---
 
@@ -241,5 +259,11 @@ The parser looks for rows matching:
 - A **date** at the start of the row (`DD/MM/YYYY`, `DD-MM-YYYY`, `YYYY-MM-DD`, etc.)
 - A **positive decimal amount** toward the end
 - Everything in between is treated as the description
+
+**Balance-column handling:** when a row contains multiple numeric values
+(`Date | Desc | Debit | Credit | Balance` layouts), the rightmost is treated as the
+running balance and skipped — the value before it is taken as the transaction amount.
+A single numeric value is used as-is. Unit tests cover both layouts
+(`tests/test_pdf_parser.py`).
 
 If a PDF uses a format the parser doesn't recognise (zero transactions extracted), the statement is marked `completed` with `transaction_count: 0` and no expense rows are created. Extend `_parse_table_row` or `_parse_text_line` in `pdf_parser.py` to add bank-specific logic.

@@ -7,10 +7,15 @@ Endpoints:
     GET    /finance/personal/summary                   — category totals per admin
 
 Access: admin and super_admin only (personal finance data is sensitive).
+Privacy model: individual transactions are private to their owner; only
+super_admin can view/manage other admins' line items. Combined category
+totals (the summary endpoint) are shared across admins.
 """
 import logging
+import re
 import shutil
 import uuid
+from decimal import Decimal
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile, status
@@ -19,7 +24,11 @@ from sqlalchemy import select
 
 from app.api.dependencies import DbSession, RequireAdmin
 from app.core.pdf_parser import detect_category, parse_bank_statement
-from app.infrastructure.base import BankStatementStatus, PersonalExpenseCategory
+from app.infrastructure.base import (
+    BankStatementStatus,
+    PersonalExpenseCategory,
+    UserRole,
+)
 from app.infrastructure.config import settings
 from app.infrastructure.models.models import BankStatement, PersonalExpense, User
 
@@ -28,6 +37,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/finance/personal", tags=["finance"])
 
 UPLOAD_DIR = Path(settings.UPLOAD_DIR)
+
+_ADMIN_ROLES = (UserRole.ADMIN, UserRole.SUPER_ADMIN)
 
 # ── Category display labels (single source of truth for the API) ──────────────
 
@@ -56,9 +67,6 @@ class TransactionOut(BaseModel):
     category: str
     category_label: str
     is_recategorized: bool
-
-    class Config:
-        from_attributes = True
 
 
 class StatementOut(BaseModel):
@@ -91,6 +99,10 @@ class SummaryOut(BaseModel):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
+def _is_super_admin(user: User) -> bool:
+    return user.role is not None and user.role.role_name == UserRole.SUPER_ADMIN
+
+
 def _txn_out(expense: PersonalExpense, admin_name: str) -> TransactionOut:
     return TransactionOut(
         expense_id=expense.expense_id,
@@ -104,6 +116,16 @@ def _txn_out(expense: PersonalExpense, admin_name: str) -> TransactionOut:
         category_label=CATEGORY_LABELS.get(expense.category.value, expense.category.value),
         is_recategorized=expense.is_recategorized,
     )
+
+
+def _safe_filename(raw: str | None) -> str:
+    """Strip any path components and restrict to a safe character set."""
+    name = Path(raw or "statement.pdf").name
+    name = re.sub(r"[^A-Za-z0-9._-]", "_", name)
+    return name or "statement.pdf"
+
+
+_PDF_MAGIC = b"%PDF-"
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -126,39 +148,57 @@ async def upload_bank_statement(
     - `file` — the PDF (multipart/form-data)
     - `admin_id` — UUID of the admin whose statement this belongs to
 
-    Returns the created statement record with all parsed transactions.
+    Admins may only upload their own statements; super_admin may upload
+    for any admin-level user.
     """
-    # Validate the target admin exists and has an admin-level role
+    # Privacy: a regular admin can only upload statements for themselves
+    if not _is_super_admin(current_user) and admin_id != current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only upload your own bank statements",
+        )
+
+    # Validate the target user exists and holds an admin-level role
     result = await db.execute(select(User).where(User.user_id == admin_id))
     admin = result.scalar_one_or_none()
     if admin is None:
         raise HTTPException(status_code=404, detail="Admin user not found")
+    await db.refresh(admin, ["role"])
+    if admin.role is None or admin.role.role_name not in _ADMIN_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Target user is not an admin",
+        )
 
-    if file.content_type not in ("application/pdf", "application/octet-stream"):
+    # Validate actual file content, not just the (spoofable) content type
+    head = await file.read(len(_PDF_MAGIC))
+    await file.seek(0)
+    if head != _PDF_MAGIC:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Only PDF files are accepted",
         )
 
-    # Persist the file
+    # Persist the file under a sanitized, collision-free name
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    safe_name = f"{uuid.uuid4()}_{file.filename or 'statement.pdf'}"
+    safe_name = f"{uuid.uuid4()}_{_safe_filename(file.filename)}"
     file_path = UPLOAD_DIR / safe_name
 
     with file_path.open("wb") as dest:
         shutil.copyfileobj(file.file, dest)
 
-    # Create the statement record (PROCESSING)
+    # Commit the statement row first so the DB connection is not held open
+    # while the (potentially slow) PDF parse runs in a thread pool.
     statement = BankStatement(
         admin_id=admin_id,
-        filename=file.filename or "statement.pdf",
+        filename=_safe_filename(file.filename),
         file_path=str(file_path),
         status=BankStatementStatus.PROCESSING,
     )
     db.add(statement)
-    await db.flush()  # get statement_id before parsing
+    await db.commit()
+    await db.refresh(statement)
 
-    # Parse the PDF in a thread pool (pdfplumber is sync)
     try:
         raw_txns = await parse_bank_statement(str(file_path))
     except Exception as exc:
@@ -170,7 +210,7 @@ async def upload_bank_statement(
             detail="Could not extract transactions from the uploaded PDF",
         ) from exc
 
-    # Persist each transaction
+    # Persist transactions and mark the statement complete in a fresh transaction
     expense_records: list[PersonalExpense] = []
     for raw in raw_txns:
         cat_value = detect_category(raw["description"])
@@ -213,7 +253,19 @@ async def list_transactions(
     admin_id: str | None = None,
     category: str | None = None,
 ):
-    """Return all personal transactions, optionally filtered by admin or category."""
+    """Return personal transactions.
+
+    Regular admins only ever see their own transactions; super_admin may
+    filter by any admin_id or omit it to see everything.
+    """
+    if not _is_super_admin(current_user):
+        if admin_id is not None and admin_id != current_user.user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view your own transactions",
+            )
+        admin_id = current_user.user_id
+
     query = select(PersonalExpense)
     if admin_id:
         query = query.where(PersonalExpense.admin_id == admin_id)
@@ -231,10 +283,12 @@ async def list_transactions(
 
     # Batch-load admin names to avoid N+1
     admin_ids = {e.admin_id for e in expenses}
-    admins_result = await db.execute(
-        select(User).where(User.user_id.in_(admin_ids))
-    )
-    admin_map = {u.user_id: u.name for u in admins_result.scalars().all()}
+    admin_map: dict[str, str] = {}
+    if admin_ids:
+        admins_result = await db.execute(
+            select(User).where(User.user_id.in_(admin_ids))
+        )
+        admin_map = {u.user_id: u.name for u in admins_result.scalars().all()}
 
     return [_txn_out(e, admin_map.get(e.admin_id, "Unknown")) for e in expenses]
 
@@ -250,10 +304,19 @@ async def recategorize_transaction(
     current_user: RequireAdmin,
     db: DbSession,
 ):
-    """Update the category of a single transaction and mark it as recategorized."""
+    """Update the category of a single transaction and mark it as recategorized.
+
+    Admins may only recategorize their own transactions.
+    """
     expense = await db.get(PersonalExpense, expense_id)
     if expense is None:
         raise HTTPException(status_code=404, detail="Transaction not found")
+
+    if not _is_super_admin(current_user) and expense.admin_id != current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only recategorize your own transactions",
+        )
 
     expense.category = body.category
     expense.is_recategorized = True
@@ -272,7 +335,12 @@ async def get_summary(
     current_user: RequireAdmin,
     db: DbSession,
 ):
-    """Return spending totals broken down by category and by admin."""
+    """Return spending totals broken down by category and by admin.
+
+    Totals are aggregated as Decimal and rounded once at the end to avoid
+    float accumulation drift. Per issue #20, combined totals are shared
+    across admins (line items stay private via the transactions endpoint).
+    """
     result = await db.execute(
         select(PersonalExpense).order_by(PersonalExpense.transaction_date.desc())
     )
@@ -280,50 +348,58 @@ async def get_summary(
 
     # Gather admin names
     admin_ids = {e.admin_id for e in expenses}
-    admins_result = await db.execute(
-        select(User).where(User.user_id.in_(admin_ids))
-    )
-    admin_map = {u.user_id: u.name for u in admins_result.scalars().all()}
+    admin_map: dict[str, str] = {}
+    if admin_ids:
+        admins_result = await db.execute(
+            select(User).where(User.user_id.in_(admin_ids))
+        )
+        admin_map = {u.user_id: u.name for u in admins_result.scalars().all()}
 
-    # Aggregate by category
+    # Aggregate with Decimal — convert to float only at serialization
     cat_totals: dict[str, dict] = {}
-    per_admin: dict[str, dict] = {}
-    grand_total = 0.0
+    per_admin_dec: dict[str, dict] = {}
+    grand_total = Decimal("0")
     unresolved = 0
 
     for exp in expenses:
         cat = exp.category.value
-        amt = float(exp.amount)
+        amt: Decimal = exp.amount
         grand_total += amt
 
         if cat == "others" and not exp.is_recategorized:
             unresolved += 1
 
-        # Category aggregation
         if cat not in cat_totals:
-            cat_totals[cat] = {"total": 0.0, "count": 0}
+            cat_totals[cat] = {"total": Decimal("0"), "count": 0}
         cat_totals[cat]["total"] += amt
         cat_totals[cat]["count"] += 1
 
-        # Per-admin aggregation
         aid = exp.admin_id
-        if aid not in per_admin:
-            per_admin[aid] = {"name": admin_map.get(aid, "Unknown"), "total": 0.0, "count": 0}
-        per_admin[aid]["total"] += amt
-        per_admin[aid]["count"] += 1
+        if aid not in per_admin_dec:
+            per_admin_dec[aid] = {
+                "name": admin_map.get(aid, "Unknown"),
+                "total": Decimal("0"),
+                "count": 0,
+            }
+        per_admin_dec[aid]["total"] += amt
+        per_admin_dec[aid]["count"] += 1
 
     categories = [
         CategoryTotal(
             category=cat,
             category_label=CATEGORY_LABELS.get(cat, cat),
-            total=data["total"],
+            total=float(data["total"]),
             count=data["count"],
         )
         for cat, data in cat_totals.items()
     ]
+    per_admin = {
+        aid: {"name": d["name"], "total": float(d["total"]), "count": d["count"]}
+        for aid, d in per_admin_dec.items()
+    }
 
     return SummaryOut(
-        grand_total=grand_total,
+        grand_total=float(grand_total),
         unresolved_count=unresolved,
         categories=categories,
         per_admin=per_admin,

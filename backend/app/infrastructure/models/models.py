@@ -1043,9 +1043,14 @@ class BankStatement(Base):
     status: Mapped[BankStatementStatus] = mapped_column(
         SAEnum(BankStatementStatus, name="bank_statement_status"),
         default=BankStatementStatus.PROCESSING,
+        server_default=BankStatementStatus.PROCESSING.value,
     )
-    transaction_count: Mapped[int] = mapped_column(Integer, default=0)
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    transaction_count: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0"
+    )
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime, default=_now, server_default=func.now()
+    )
 
     # relationships
     admin: Mapped["User"] = relationship("User", foreign_keys=[admin_id])
@@ -1073,10 +1078,10 @@ class PersonalExpense(Base):
         UUID(as_uuid=False), primary_key=True, default=_uuid
     )
     statement_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("bank_statements.statement_id")
+        UUID(as_uuid=False), ForeignKey("bank_statements.statement_id"), index=True
     )
     admin_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("users.user_id")
+        UUID(as_uuid=False), ForeignKey("users.user_id"), index=True
     )
     transaction_date: Mapped[datetime] = mapped_column(DateTime)
     description: Mapped[str] = mapped_column(Text)
@@ -1084,9 +1089,15 @@ class PersonalExpense(Base):
     category: Mapped[PersonalExpenseCategory] = mapped_column(
         SAEnum(PersonalExpenseCategory, name="personal_expense_category"),
         default=PersonalExpenseCategory.OTHERS,
+        server_default=PersonalExpenseCategory.OTHERS.value,
+        index=True,
     )
-    is_recategorized: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    is_recategorized: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=_now, server_default=func.now()
+    )
 
     # relationships
     statement: Mapped["BankStatement"] = relationship(

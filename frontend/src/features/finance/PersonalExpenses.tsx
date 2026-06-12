@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Upload, Loader2, AlertTriangle, RotateCcw, Check, RefreshCw } from 'lucide-react';
 import { Button } from '@/design/primitives/Button';
 import { Card, CardLabel } from '@/design/primitives/Card';
@@ -7,9 +7,11 @@ import { Select } from '@/design/primitives/Select';
 import { Avatar } from '@/design/primitives/Avatar';
 import { CATEGORY_LABELS, REAL_CATEGORIES, type PersonalCategory } from '@/data/finance';
 import {
+  getSummary,
   listTransactions,
   recategorizeTransaction,
   uploadBankStatement,
+  type SummaryResponse,
   type TransactionResponse,
 } from '@/lib/finance/api';
 import { useAuthStore } from '@/lib/auth/useAuthStore';
@@ -18,33 +20,49 @@ import { cn } from '@/lib/cn';
 
 const ALL_CATS: PersonalCategory[] = [...REAL_CATEGORIES, 'others'];
 
+/** Parse an ISO date-only string (YYYY-MM-DD) as a *local* date, not UTC. */
+const localDate = (iso: string) => new Date(`${iso}T00:00:00`);
+
 // ── Top-level component ───────────────────────────────────────────────────────
 
 export function PersonalExpenses() {
+  // Transactions: backend returns only the current admin's rows
+  // (super_admin receives everyone's). Summary: combined totals, shared.
   const [txns, setTxns] = useState<TransactionResponse[]>([]);
+  const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuthStore();
 
-  const fetchTxns = async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await listTransactions();
-      setTxns(data);
+      const [txnData, summaryData] = await Promise.all([listTransactions(), getSummary()]);
+      setTxns(txnData);
+      setSummary(summaryData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load transactions');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchTxns(); }, []);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const refreshSummary = async () => {
+    try {
+      setSummary(await getSummary());
+    } catch {
+      // non-fatal: keep showing the previous summary
+    }
+  };
 
   const handleRecat = async (expenseId: string, cat: PersonalCategory) => {
     try {
       const updated = await recategorizeTransaction(expenseId, cat);
-      setTxns(prev => prev.map(t => t.expense_id === expenseId ? updated : t));
+      setTxns(prev => prev.map(t => (t.expense_id === expenseId ? updated : t)));
+      refreshSummary();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update category');
     }
@@ -52,15 +70,16 @@ export function PersonalExpenses() {
 
   const handleUpload = (newTxns: TransactionResponse[]) => {
     setTxns(prev => [...newTxns, ...prev]);
+    refreshSummary();
   };
 
-  // Aggregate totals
-  const totals: Record<string, number> = {};
-  txns.forEach(t => { totals[t.category] = (totals[t.category] ?? 0) + t.amount; });
-  const grand = txns.reduce((s, t) => s + t.amount, 0);
-  const unresolved = txns.filter(t => t.category === 'others' && !t.is_recategorized).length;
+  // Combined totals come from the summary endpoint (shared across admins)
+  const catTotals: Record<string, { total: number; count: number }> = {};
+  summary?.categories.forEach(c => { catTotals[c.category] = { total: c.total, count: c.count }; });
+  const grand = summary?.grand_total ?? 0;
+  const unresolved = summary?.unresolved_count ?? 0;
 
-  // Group transactions per admin
+  // Group visible transactions per admin (only ever >1 panel for super_admin)
   const adminMap = new Map<string, { name: string; txns: TransactionResponse[] }>();
   for (const t of txns) {
     if (!adminMap.has(t.admin_id)) adminMap.set(t.admin_id, { name: t.admin_name, txns: [] });
@@ -81,7 +100,7 @@ export function PersonalExpenses() {
       <div className="flex flex-col items-center gap-3 py-16">
         <AlertTriangle className="w-5 h-5 text-[var(--color-warning)]" />
         <p className="text-[13px] text-[var(--color-text-secondary)]">{error}</p>
-        <Button variant="secondary" size="sm" leading={<RefreshCw className="w-3 h-3" />} onClick={fetchTxns}>
+        <Button variant="secondary" size="sm" leading={<RefreshCw className="w-3 h-3" />} onClick={fetchAll}>
           Retry
         </Button>
       </div>
@@ -90,13 +109,13 @@ export function PersonalExpenses() {
 
   return (
     <div className="space-y-5">
-      {/* Category breakdown */}
+      {/* Category breakdown — combined totals across all admins */}
       <Card padding="none" className="overflow-hidden">
         <div className="px-4 h-11 border-b border-[var(--color-border)] flex items-center justify-between">
           <CardLabel>Expense breakdown by category</CardLabel>
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-[var(--color-text-tertiary)]">Combined — all admins</span>
-            <button onClick={fetchTxns} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]">
+            <button onClick={fetchAll} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]">
               <RefreshCw className="w-3 h-3" />
             </button>
           </div>
@@ -105,7 +124,7 @@ export function PersonalExpenses() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
             {ALL_CATS.map(cat => {
               const isOthers = cat === 'others';
-              const amt = totals[cat] ?? 0;
+              const entry = catTotals[cat];
               return (
                 <div key={cat} className="rounded-[var(--radius-md)] border border-[var(--color-border)] p-3">
                   <p className="text-[10px] font-medium uppercase tracking-[0.04em] text-[var(--color-text-tertiary)]">
@@ -113,12 +132,12 @@ export function PersonalExpenses() {
                   </p>
                   <p className={cn(
                     'text-[17px] font-semibold tabular mt-1',
-                    isOthers && amt > 0 ? 'text-[var(--color-warning)]' : 'text-[var(--color-text-primary)]',
+                    isOthers && (entry?.total ?? 0) > 0 ? 'text-[var(--color-warning)]' : 'text-[var(--color-text-primary)]',
                   )}>
-                    {fmtMoney(amt)}
+                    {fmtMoney(entry?.total ?? 0)}
                   </p>
                   <p className="text-[10px] text-[var(--color-text-tertiary)] mt-0.5 tabular">
-                    {txns.filter(t => t.category === cat).length} txn
+                    {entry?.count ?? 0} txn
                   </p>
                 </div>
               );
@@ -144,9 +163,8 @@ export function PersonalExpenses() {
         </div>
       </Card>
 
-      {/* Per-admin panels */}
+      {/* Per-admin panels — regular admins only ever see their own */}
       {txns.length === 0 ? (
-        // No data yet — show one upload panel for the current user if they're admin
         user && (
           <AdminPanel
             adminId={user.user_id}
@@ -300,7 +318,7 @@ function TxRow({
       warn && 'bg-[var(--color-warning-bg)]/30',
     )}>
       <td className="px-4 h-12 text-[var(--color-text-tertiary)] whitespace-nowrap">
-        {fmtDate(new Date(tx.transaction_date))}
+        {fmtDate(localDate(tx.transaction_date))}
       </td>
       <td className="px-4 h-12 text-[var(--color-text-primary)] max-w-xs">
         <p className="truncate">{tx.description}</p>

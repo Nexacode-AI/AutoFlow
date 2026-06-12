@@ -54,9 +54,12 @@ def _row_from_cells(cells: list[str | None]) -> dict | None:
     """
     Try to extract (date, description, amount) from a table row.
 
-    Heuristic: first cell that parses as a date = transaction date;
-    last cell that parses as a positive amount = expense amount;
-    everything in between collapses to description.
+    Heuristic: first cell that parses as a date = transaction date.
+    For the amount, collect every numeric cell right of the date; when more
+    than one exists the rightmost is almost always the running *balance*
+    (Date | Desc | Debit | Credit | Balance layouts), so the second-to-last
+    is taken as the transaction value. All numeric cells are excluded from
+    the description.
     """
     texts = [str(c).strip() if c else "" for c in cells]
 
@@ -75,22 +78,24 @@ def _row_from_cells(cells: list[str | None]) -> dict | None:
     if date_obj is None:
         return None
 
-    # Scan right-to-left for the first numeric amount (skip balance column if present)
-    amount: Decimal | None = None
-    amount_idx: int = -1
-    for i in range(len(texts) - 1, date_idx, -1):
+    # Collect all positive numeric cells right of the date column
+    numeric: list[tuple[int, Decimal]] = []
+    for i in range(date_idx + 1, len(texts)):
         candidate = _parse_amount(texts[i])
         if candidate and candidate > 0:
-            amount = candidate
-            amount_idx = i
-            break
+            numeric.append((i, candidate))
 
-    if amount is None:
+    if not numeric:
         return None
+
+    # Single numeric cell → it's the amount; multiple → last one is the
+    # running balance, so take the one before it (the debit/credit value).
+    amount = numeric[-1][1] if len(numeric) == 1 else numeric[-2][1]
+    numeric_idx = {i for i, _ in numeric}
 
     desc_parts = [
         t for i, t in enumerate(texts)
-        if i != date_idx and i != amount_idx and t
+        if i != date_idx and i not in numeric_idx and t
     ]
     description = " ".join(desc_parts).strip() or "—"
 
@@ -119,16 +124,19 @@ def _row_from_line(line: str) -> dict | None:
     if date_obj is None:
         return None
 
-    # Find all amounts on the line; use the last non-zero one
+    # Find all positive amounts on the line
     amounts = [(m.start(), _parse_amount(m.group(1))) for m in _AMOUNT_RE.finditer(line)]
     amounts = [(s, a) for s, a in amounts if a and a > 0]
     if not amounts:
         return None
 
-    # The rightmost amount is typically the transaction value
-    last_amount_start, amount = amounts[-1]
+    # A lone amount is the transaction value; with several, the rightmost is
+    # typically the running balance, so take the one just before it.
+    _, amount = amounts[-1] if len(amounts) == 1 else amounts[-2]
 
-    description = line[date_end:last_amount_start].strip(" \t|–-") or "—"
+    # Description runs from the date up to the first amount on the line
+    first_amount_start = amounts[0][0]
+    description = line[date_end:first_amount_start].strip(" \t|–-") or "—"
 
     return {"date": date_obj, "description": description, "amount": amount}
 
