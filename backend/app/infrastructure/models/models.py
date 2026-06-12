@@ -18,6 +18,9 @@ from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy import (
+    JSON as SAJSON,
+)
+from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
@@ -762,8 +765,12 @@ class CustomerConfirmation(Base):
     quotation_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("quotations.quotation_id")
     )
-    # Raw Google Form response stored as JSON for auditability
-    form_response_raw: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Raw Google Form response stored as JSON for auditability.
+    # JSONB on Postgres; falls back to generic JSON on SQLite so local
+    # dev without Postgres works.
+    form_response_raw: Mapped[dict | None] = mapped_column(
+        JSONB().with_variant(SAJSON(), "sqlite"), nullable=True
+    )
     received_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
     # relationships

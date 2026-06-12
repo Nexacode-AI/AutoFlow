@@ -1,12 +1,16 @@
 """Unit tests for the bank-statement PDF parser (Issue #20)."""
 from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
 
 from app.core.pdf_parser import (
     _row_from_cells,
     _row_from_line,
     detect_category,
+    parse_bank_statement,
 )
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 # ── _row_from_cells ───────────────────────────────────────────────────────────
 
@@ -85,3 +89,27 @@ def test_detect_meals():
 
 def test_detect_unknown_falls_to_others():
     assert detect_category("XYZ UNKNOWN MERCHANT 123") == "others"
+
+
+# ── Full PDF end-to-end (real pdfplumber parse of the bundled fixture) ────────
+
+
+async def test_parse_sample_statement_pdf():
+    """The bundled sample statement has 8 rows in a Date|Desc|Debit|Balance
+    table — every amount must come from the Debit column, never Balance."""
+    txns = await parse_bank_statement(str(FIXTURES / "sample_bank_statement.pdf"))
+
+    assert len(txns) == 8
+
+    by_desc = {t["description"]: t for t in txns}
+    petrol = next(t for d, t in by_desc.items() if "PETRONAS" in d)
+    assert petrol["amount"] == Decimal("210.00")
+    assert petrol["date"] == datetime(2026, 4, 1)
+
+    balances = {Decimal("4790.00"), Decimal("4661.00"), Decimal("4635.50"),
+                Decimal("4325.50"), Decimal("3705.50"), Decimal("3638.50"),
+                Decimal("3188.50"), Decimal("3099.62")}
+    assert not [t for t in txns if t["amount"] in balances]
+
+    total = sum(t["amount"] for t in txns)
+    assert total == Decimal("1900.38")
