@@ -124,3 +124,24 @@ class PaymentMethod(enum.StrEnum):
     CARD = "card"
     TRANSFER = "transfer"
     OTHER = "other"
+
+
+# ──────────────────────────────────────────────
+# Personal Expenses (Issue #20)
+# ──────────────────────────────────────────────
+
+class PersonalExpenseCategory(enum.StrEnum):
+    FUEL_TRANSPORT = "fuel_transport"
+    UTILITIES = "utilities"
+    MEALS_ENTERTAINMENT = "meals_entertainment"
+    OFFICE_STATIONERY = "office_stationery"
+    TRAINING_DEVELOPMENT = "training_development"
+    MARKETING_ADVERTISING = "marketing_advertising"
+    EQUIPMENT_MAINTENANCE = "equipment_maintenance"
+    OTHERS = "others"
+
+
+class BankStatementStatus(enum.StrEnum):
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"

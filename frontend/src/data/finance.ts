@@ -73,64 +73,28 @@ export const extractAmount = (partName: string): number =>
 /* ─── Personal Expenses ─── */
 
 export type PersonalCategory =
-  | 'category_1' | 'category_2' | 'category_3' | 'category_4'
-  | 'category_5' | 'category_6' | 'category_7' | 'others';
+  | 'fuel_transport'
+  | 'utilities'
+  | 'meals_entertainment'
+  | 'office_stationery'
+  | 'training_development'
+  | 'marketing_advertising'
+  | 'equipment_maintenance'
+  | 'others';
 
 export const CATEGORY_LABELS: Record<PersonalCategory, string> = {
-  category_1: 'Category 1',
-  category_2: 'Category 2',
-  category_3: 'Category 3',
-  category_4: 'Category 4',
-  category_5: 'Category 5',
-  category_6: 'Category 6',
-  category_7: 'Category 7',
-  others:     'Others',
+  fuel_transport:        'Fuel & Transport',
+  utilities:             'Utilities',
+  meals_entertainment:   'Meals & Entertainment',
+  office_stationery:     'Office & Stationery',
+  training_development:  'Training & Development',
+  marketing_advertising: 'Marketing & Advertising',
+  equipment_maintenance: 'Equipment & Maintenance',
+  others:                'Others',
 };
 
 export const REAL_CATEGORIES = (Object.keys(CATEGORY_LABELS) as PersonalCategory[])
   .filter(c => c !== 'others');
-
-export interface PersonalTransaction {
-  id: string;
-  adminId: '1' | '2';
-  adminName: string;
-  description: string;
-  amount: number;
-  category: PersonalCategory;
-  isOthers: boolean;
-  isRecategorized: boolean;
-  date: Date;
-}
-
-export const PERSONAL_EXPENSES: PersonalTransaction[] = [
-  { id: 'pe1',  adminId: '1', adminName: 'Admin 1', description: 'Monthly internet subscription - category_3',      amount: 129.00, category: 'category_3', isOthers: false, isRecategorized: false, date: new Date('2026-04-01') },
-  { id: 'pe2',  adminId: '1', adminName: 'Admin 1', description: 'Petrol reimbursement - category_1',               amount: 210.00, category: 'category_1', isOthers: false, isRecategorized: false, date: new Date('2026-04-02') },
-  { id: 'pe3',  adminId: '1', adminName: 'Admin 1', description: 'Office stationery purchase',                      amount: 85.50,  category: 'others',     isOthers: true,  isRecategorized: false, date: new Date('2026-04-03') },
-  { id: 'pe4',  adminId: '1', adminName: 'Admin 1', description: 'Team lunch - category_5',                         amount: 310.00, category: 'category_5', isOthers: false, isRecategorized: false, date: new Date('2026-04-04') },
-  { id: 'pe5',  adminId: '1', adminName: 'Admin 1', description: 'Workshop equipment maintenance - category_2',     amount: 450.00, category: 'category_2', isOthers: false, isRecategorized: false, date: new Date('2026-03-28') },
-  { id: 'pe6',  adminId: '1', adminName: 'Admin 1', description: 'Staff welfare expenses',                          amount: 175.00, category: 'others',     isOthers: true,  isRecategorized: false, date: new Date('2026-03-25') },
-  { id: 'pe7',  adminId: '1', adminName: 'Admin 1', description: 'Vehicle insurance renewal - category_4',          amount: 890.00, category: 'category_4', isOthers: false, isRecategorized: false, date: new Date('2026-03-20') },
-  { id: 'pe8',  adminId: '2', adminName: 'Admin 2', description: 'Marketing campaign ads - category_6',             amount: 620.00, category: 'category_6', isOthers: false, isRecategorized: false, date: new Date('2026-04-01') },
-  { id: 'pe9',  adminId: '2', adminName: 'Admin 2', description: 'Software subscription renewal - category_3',      amount: 299.00, category: 'category_3', isOthers: false, isRecategorized: false, date: new Date('2026-04-02') },
-  { id: 'pe10', adminId: '2', adminName: 'Admin 2', description: 'Courier charges for client docs',                 amount: 45.00,  category: 'others',     isOthers: true,  isRecategorized: false, date: new Date('2026-04-03') },
-  { id: 'pe11', adminId: '2', adminName: 'Admin 2', description: 'Client entertainment - category_5',               amount: 530.00, category: 'category_5', isOthers: false, isRecategorized: false, date: new Date('2026-03-30') },
-  { id: 'pe12', adminId: '2', adminName: 'Admin 2', description: 'Training material - category_7',                  amount: 180.00, category: 'category_7', isOthers: false, isRecategorized: false, date: new Date('2026-03-22') },
-  { id: 'pe13', adminId: '2', adminName: 'Admin 2', description: 'Cleaning supplies and consumables - category_2',  amount: 92.00,  category: 'category_2', isOthers: false, isRecategorized: false, date: new Date('2026-03-18') },
-];
-
-export const MOCK_BANK_ROWS = [
-  { desc: 'Workshop tools purchase - category_2',     amount: 340.00 },
-  { desc: 'Monthly phone bill payment - category_3',  amount: 88.00  },
-  { desc: 'Client meeting expenses',                   amount: 215.50 },
-  { desc: 'Training workshop fee - category_7',        amount: 450.00 },
-  { desc: 'Printing and stationery supplies',          amount: 67.00  },
-];
-
-export const detectCategory = (description: string): PersonalCategory => {
-  const lower = description.toLowerCase();
-  for (const cat of REAL_CATEGORIES) if (lower.includes(cat)) return cat;
-  return 'others';
-};
 
 /* ─── Profit Calculator ─── */
 

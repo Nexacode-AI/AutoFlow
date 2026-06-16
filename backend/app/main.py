@@ -4,6 +4,7 @@ Run locally:   uvicorn app.main:app --reload
 """
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 
@@ -25,6 +26,11 @@ async def lifespan(app: FastAPI):
     except Exception as exc:  # noqa: BLE001
         logger.error("✗ Database initialization failed: %s", exc, exc_info=True)
         raise
+
+    upload_dir = Path(settings.UPLOAD_DIR)
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("✓ Upload directory ready: %s", upload_dir.resolve())
+
     yield
     logger.info("Shutting down AutoFlow backend...")
 
